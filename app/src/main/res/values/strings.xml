@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">LabAppMobili</string>
-    <string name="mapbox_access_token">sk.eyJ1IjoibWl0dTAiLCJhIjoiY2xuYnpqbGViMG5kNTJucDFqZW84Y3dtMyJ9.jhww-XArixKY8SKjxl4oLw</string>
+    <string name="my_app_api_key">AIzaSyBdAxhMjZGG_S5oLHnZ-lZ_EY3c0NuvfiU</string>
 </resources>
