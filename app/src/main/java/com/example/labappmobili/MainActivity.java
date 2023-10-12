@@ -1,14 +1,16 @@
 package com.example.labappmobili;
 
-import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.SearchView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,11 +23,13 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,14 +37,15 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private final int FINE_PERMISSION_CODE = 1;
-
-    private MgrsGrid mgrsGrid;
-
+    private TextView wifiSignalStrengthText;
     private GoogleMap myMap;
     private SearchView mapSearchView;
 
     Location currentLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
+
+    private Handler wifiUpdateHandler;
+    private static final int WIFI_UPDATE_INTERVAL = 5000;
 
     @Override
     protected void onCreate(Bundle saveInstanceState) {
@@ -48,6 +53,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         mapSearchView = findViewById(R.id.mapSearch);
+
+        wifiUpdateHandler = new Handler();
+        wifiUpdateHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                updateWifiSignalStrength();
+                wifiUpdateHandler.postDelayed(this, WIFI_UPDATE_INTERVAL);
+            }
+        }, WIFI_UPDATE_INTERVAL);
 
         //cerca un nuovo punto sulla mappa
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -88,8 +102,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void getLasLocation() {
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, FINE_PERMISSION_CODE);
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+            }, FINE_PERMISSION_CODE);
             return;
         }
         Task<Location> task = fusedLocationProviderClient.getLastLocation();
@@ -108,22 +126,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
+         myMap = googleMap;
 
-        myMap = googleMap;
+            LatLng myLocation = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+            myMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
+            myMap.addMarker(new MarkerOptions().position(myLocation).title("My location"));
 
-        LatLng myLocation = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-        myMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
-        myMap.addMarker(new MarkerOptions().position(myLocation).title("My location"));
+            myMap.getUiSettings().setZoomControlsEnabled(true);
+            myMap.getUiSettings().setCompassEnabled(true);
 
-        myMap.getUiSettings().setZoomControlsEnabled(true);
-        myMap.getUiSettings().setCompassEnabled(true);
+        // Crea una TileOverlayOptions per la tua griglia colorata
+        //TileOverlayOptions tileOverlayOptions = new TileOverlayOptions();
 
-        myMap.getUiSettings().setZoomControlsEnabled(true);
-        myMap.getUiSettings().setCompassEnabled(true);
+        // Aggiungi la TileOverlay alla mappa
+        //TileOverlay tileOverlay = myMap.addTileOverlay(tileOverlayOptions);
 
-        mgrsGrid = new MgrsGrid(myMap);
-        mgrsGrid.addGridToMap();
-    }
+        }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -162,12 +180,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode == FINE_PERMISSION_CODE){
-            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+    if (requestCode == FINE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getLasLocation();
-            } else{
+            } else {
                 Toast.makeText(this, "Location permission denied, please allow the permission", Toast.LENGTH_SHORT).show();
             }
         }
     }
+
+
+    private void updateWifiSignalStrength() {
+        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+
+        wifiSignalStrengthText = findViewById(R.id.wifiValue);
+        if (wifiManager != null) {
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+            int signalStrength = wifiInfo.getRssi() + 127;
+            wifiSignalStrengthText.setText("WiFi Signal Strength: " + signalStrength + " dBm");
+        } else {
+            wifiSignalStrengthText.setText("WiFi Signal Strength: N/A");
+        }
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        wifiUpdateHandler.removeCallbacksAndMessages(null);
+    }
+
+
 }
