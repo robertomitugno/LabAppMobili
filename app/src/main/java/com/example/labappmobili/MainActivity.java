@@ -31,12 +31,18 @@ import com.google.android.gms.tasks.Task;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+
 import java.io.IOException;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private final int FINE_PERMISSION_CODE = 1;
+
+    private static final int AUDIO_PERMISSION_CODE = 2;
     private TextView wifiSignalStrengthText;
     private GoogleMap myMap;
     private SearchView mapSearchView;
@@ -46,6 +52,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private Handler wifiUpdateHandler;
     private static final int WIFI_UPDATE_INTERVAL = 5000;
+
+
+    private TextView noiseLevelText;
+    private AudioRecord audioRecord;
+    private boolean isRecording = false;
+
 
     @Override
     protected void onCreate(Bundle saveInstanceState) {
@@ -59,9 +71,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 updateWifiSignalStrength();
+                updateNoiseLevel();
                 wifiUpdateHandler.postDelayed(this, WIFI_UPDATE_INTERVAL);
             }
         }, WIFI_UPDATE_INTERVAL);
+
+
+        noiseLevelText = findViewById(R.id.noiseValue);
+        initAudioRecorder();
 
         //cerca un nuovo punto sulla mappa
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -71,9 +88,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String location = mapSearchView.getQuery().toString();
                 List<Address> addressList = null;
 
-                if(location != null){
+                if (location != null) {
                     Geocoder geocoder = new Geocoder(MainActivity.this);
-                    try{
+                    try {
                         addressList = geocoder.getFromLocationName(location, 1);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -126,14 +143,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
-         myMap = googleMap;
+        myMap = googleMap;
 
-            LatLng myLocation = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-            myMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
-            myMap.addMarker(new MarkerOptions().position(myLocation).title("My location"));
+        LatLng myLocation = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+        myMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
+        myMap.addMarker(new MarkerOptions().position(myLocation).title("My location"));
 
-            myMap.getUiSettings().setZoomControlsEnabled(true);
-            myMap.getUiSettings().setCompassEnabled(true);
+        myMap.getUiSettings().setZoomControlsEnabled(true);
+        myMap.getUiSettings().setCompassEnabled(true);
 
         // Crea una TileOverlayOptions per la tua griglia colorata
         //TileOverlayOptions tileOverlayOptions = new TileOverlayOptions();
@@ -141,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Aggiungi la TileOverlay alla mappa
         //TileOverlay tileOverlay = myMap.addTileOverlay(tileOverlayOptions);
 
-        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -154,37 +171,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
         int id = item.getItemId();
-        if(id == R.id.mapNone) {
+        if (id == R.id.mapNone) {
             myMap.setMapType(GoogleMap.MAP_TYPE_NONE);
         }
-
-        if(id == R.id.mapNormal) {
+        if (id == R.id.mapNormal) {
             myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         }
-
-        if(id == R.id.mapSatellite) {
+        if (id == R.id.mapSatellite) {
             myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
         }
-
-        if(id == R.id.mapHybrid) {
+        if (id == R.id.mapHybrid) {
             myMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
         }
-
-        if(id == R.id.mapTerrian) {
+        if (id == R.id.mapTerrian) {
             myMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
         }
-
         return super.onOptionsItemSelected(item);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    if (requestCode == FINE_PERMISSION_CODE) {
+        if (requestCode == FINE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getLasLocation();
             } else {
                 Toast.makeText(this, "Location permission denied, please allow the permission", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        if (requestCode == AUDIO_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // L'utente ha concesso l'autorizzazione, inizia la registrazione audio
+                initAudioRecorder();
+            } else {
+                // L'utente ha negato l'autorizzazione, gestisci di conseguenza
+                Toast.makeText(this, "Audio recording permission denied, please allow the permission", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -202,11 +224,69 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             wifiSignalStrengthText.setText("WiFi Signal Strength: N/A");
         }
     }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         wifiUpdateHandler.removeCallbacksAndMessages(null);
     }
 
+
+    private void initAudioRecorder() {
+        int audioSource = MediaRecorder.AudioSource.MIC;
+        int sampleRate = 44100;
+        int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+        int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            // Richiedi l'autorizzazione per la registrazione audio
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, AUDIO_PERMISSION_CODE);
+        } else {
+            // Autorizzazione già concessa, inizia la registrazione audio
+            audioRecord = new AudioRecord(audioSource, sampleRate, channelConfig, audioFormat, bufferSize);
+            if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
+                audioRecord.startRecording();
+                isRecording = true;
+            } else {
+                noiseLevelText.setText("Noise Level: N/A");
+            }
+        }
+    }
+
+    private void updateNoiseLevel() {
+        if (isRecording) {
+            short[] audioData = new short[audioRecord.getBufferSizeInFrames()];
+            audioRecord.read(audioData, 0, audioData.length);
+            double noiseLevel = calculateNoiseLevel(audioData);
+            noiseLevelText.setText("Noise Level: " + noiseLevel + " dB");
+        } else {
+            noiseLevelText.setText("Noise Level: N/A");
+        }
+    }
+
+    private double calculateNoiseLevel(short[] audioData) {
+        double sum = 0;
+        for (short sample : audioData) {
+            sum += sample * sample;
+        }
+        double rms = Math.sqrt(sum / audioData.length);
+
+        // Imposta la soglia uditiva come valore di riferimento (0 dB)
+        double threshold = 1.0; // Implementa una funzione per calcolare la soglia uditiva
+
+        // Calcola il livello di rumore in dB rispetto alla soglia uditiva
+        double db = 20 * Math.log10(rms / threshold);
+
+        // Assicurati che il valore non sia negativo
+        if (db < 0) {
+            db = 0;
+        }
+
+        // Arrotonda il valore a due cifre dopo la virgola
+        db = Math.round(db * 100.0) / 100.0;
+
+        return db;
+    }
 
 }
