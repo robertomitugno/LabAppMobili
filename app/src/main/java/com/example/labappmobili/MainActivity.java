@@ -25,6 +25,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -34,6 +35,10 @@ import android.net.wifi.WifiManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,33 +56,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     FusedLocationProviderClient fusedLocationProviderClient;
 
     private Handler wifiUpdateHandler;
-    private static final int WIFI_UPDATE_INTERVAL = 5000;
+    private static final int WIFI_UPDATE_INTERVAL = 1000;
 
 
     private TextView noiseLevelText;
+    private static final int NOISE_UPDATE_INTERVAL = 1000;
     private AudioRecord audioRecord;
     private boolean isRecording = false;
 
+    private WifiSignalManager wifiSignalManager;
+
 
     @Override
-    protected void onCreate(Bundle saveInstanceState) {
-        super.onCreate(saveInstanceState);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         mapSearchView = findViewById(R.id.mapSearch);
+        wifiSignalStrengthText = findViewById(R.id.wifiValue);
+        noiseLevelText = findViewById(R.id.noiseValue);
 
+        wifiSignalManager = new WifiSignalManager(this);
         wifiUpdateHandler = new Handler();
         wifiUpdateHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                updateWifiSignalStrength();
+                wifiSignalManager.updateWifiSignalStrength();
                 updateNoiseLevel();
                 wifiUpdateHandler.postDelayed(this, WIFI_UPDATE_INTERVAL);
             }
         }, WIFI_UPDATE_INTERVAL);
 
-
-        noiseLevelText = findViewById(R.id.noiseValue);
         initAudioRecorder();
 
         //cerca un nuovo punto sulla mappa
@@ -152,12 +161,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         myMap.getUiSettings().setZoomControlsEnabled(true);
         myMap.getUiSettings().setCompassEnabled(true);
 
-        // Crea una TileOverlayOptions per la tua griglia colorata
-        //TileOverlayOptions tileOverlayOptions = new TileOverlayOptions();
-
-        // Aggiungi la TileOverlay alla mappa
-        //TileOverlay tileOverlay = myMap.addTileOverlay(tileOverlayOptions);
-
+        // Aggiungi il layer di griglia al tuo GoogleMap
+        GridTileProvider gridTileProvider = new GridTileProvider();
+        myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
     }
 
     @Override
@@ -192,6 +198,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         if (requestCode == FINE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getLasLocation();
@@ -200,30 +207,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
 
-        if (requestCode == AUDIO_PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // L'utente ha concesso l'autorizzazione, inizia la registrazione audio
-                initAudioRecorder();
-            } else {
-                // L'utente ha negato l'autorizzazione, gestisci di conseguenza
-                Toast.makeText(this, "Audio recording permission denied, please allow the permission", Toast.LENGTH_SHORT).show();
-            }
-        }
     }
 
-
-    private void updateWifiSignalStrength() {
-        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-
-        wifiSignalStrengthText = findViewById(R.id.wifiValue);
-        if (wifiManager != null) {
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-            int signalStrength = wifiInfo.getRssi() + 127;
-            wifiSignalStrengthText.setText("WiFi Signal Strength: " + signalStrength + " dBm");
-        } else {
-            wifiSignalStrengthText.setText("WiFi Signal Strength: N/A");
-        }
-    }
 
     @Override
     protected void onDestroy() {
