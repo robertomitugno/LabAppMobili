@@ -7,6 +7,8 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.SearchView;
@@ -41,12 +43,12 @@ import android.os.Looper;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private final int FINE_PERMISSION_CODE = 1;
-
     private static final int AUDIO_PERMISSION_CODE = 2;
     private TextView wifiSignalStrengthText;
     private GoogleMap myMap;
@@ -58,14 +60,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Handler wifiUpdateHandler;
     private static final int WIFI_UPDATE_INTERVAL = 1000;
 
-
     private TextView noiseLevelText;
+
+    private TextView lteSignal;
     private static final int NOISE_UPDATE_INTERVAL = 1000;
+
+    private static final int LTE_UPDATE_INTERVAL = 1000;
     private AudioRecord audioRecord;
     private boolean isRecording = false;
 
     private WifiSignalManager wifiSignalManager;
 
+    private TelephonyManager telephonyManager;
+
+    private Handler lteUpdateHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapSearchView = findViewById(R.id.mapSearch);
         wifiSignalStrengthText = findViewById(R.id.wifiValue);
         noiseLevelText = findViewById(R.id.noiseValue);
+        lteSignal = findViewById(R.id.lteValue);
 
         wifiSignalManager = new WifiSignalManager(this);
         wifiUpdateHandler = new Handler();
@@ -83,11 +92,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 wifiSignalManager.updateWifiSignalStrength();
                 updateNoiseLevel();
+                updateLTELevel();
                 wifiUpdateHandler.postDelayed(this, WIFI_UPDATE_INTERVAL);
             }
         }, WIFI_UPDATE_INTERVAL);
 
         initAudioRecorder();
+
+        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+
+        lteUpdateHandler = new Handler();
+        lteUpdateHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                updateLTELevel(); // Chiamata alla funzione per aggiornare il segnale LTE
+                lteUpdateHandler.postDelayed(this, LTE_UPDATE_INTERVAL);
+            }
+        }, LTE_UPDATE_INTERVAL);
 
         //cerca un nuovo punto sulla mappa
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -161,7 +182,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         myMap.getUiSettings().setZoomControlsEnabled(true);
         myMap.getUiSettings().setCompassEnabled(true);
 
-        // Aggiungi il layer di griglia al tuo GoogleMap
+
+        // Stampa le coordinate della tua posizione con Log.d
+        Log.d("MainActivity", "My Location - Latitude: " + myLocation.latitude + ", Longitude: " + myLocation.longitude);
+
+        // Passa le coordinate reali della mappa al GridTileProvider
         GridTileProvider gridTileProvider = new GridTileProvider();
         myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
     }
@@ -247,6 +272,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             noiseLevelText.setText("Noise Level: " + noiseLevel + " dB");
         } else {
             noiseLevelText.setText("Noise Level: N/A");
+        }
+    }
+
+    private void updateLTELevel() {
+        if (isRecording) {
+            int lteLevel = getLTELevel();
+            lteSignal.setText("LTE Level: " + lteLevel + " dB");
+        } else {
+            lteSignal.setText("LTE Level: N/A");
+        }
+    }
+
+    private int getLTELevel() {
+        try {
+            // Ottieni la forza del segnale LTE
+            int lteSignalStrength = 0;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                lteSignalStrength = telephonyManager.getSignalStrength().getLevel();
+            }
+            Log.i("LTE_TAG", "Signal Strength = " + lteSignalStrength);
+            return lteSignalStrength;
+        } catch (Exception e) {
+            Log.e("LTE_TAG", "Exception: " + e.toString());
+            return 0; // Ritorna un valore di default se si verifica un'eccezione
         }
     }
 
