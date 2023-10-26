@@ -1,24 +1,21 @@
 package com.example.labappmobili;
 
-import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.telephony.TelephonyManager;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.provider.Settings;
+import android.widget.Button;
 import android.widget.SearchView;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -27,53 +24,37 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.widget.TextView;
-
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    private final int FINE_PERMISSION_CODE = 1;
-    private static final int AUDIO_PERMISSION_CODE = 2;
-    private TextView wifiSignalStrengthText;
-    private GoogleMap myMap;
+    private static final int PERMISSION_LOCATION_CODE = 1;
+    private static final String FINE_PERMISSION_CODE = android.Manifest.permission.ACCESS_FINE_LOCATION;
+
+    private static final int PERMISSION_AUDIO_CODE = 2;
+    private static final String PERMISSION_RECORD_AUDIO = android.Manifest.permission.RECORD_AUDIO;
+
+    private Handler wifiUpdateHandler;
+    private static final int UPDATE_INTERVAL = 1000;
+
+    private WifiSignalManager wifiSignalManager;
+    private LteSignalManager lteSignalManager;
+    private NoiseSignalManager noiseSignalManager;
+
+
     private SearchView mapSearchView;
+
+    private Handler lteUpdateHandler;
+    private Handler noiseUpdateHandler;
+    private Button noiseButton;
 
     Location currentLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
-
-    private Handler wifiUpdateHandler;
-    private static final int WIFI_UPDATE_INTERVAL = 1000;
-
-    private TextView noiseLevelText;
-
-    private TextView lteSignal;
-    private static final int NOISE_UPDATE_INTERVAL = 1000;
-
-    private static final int LTE_UPDATE_INTERVAL = 1000;
-    private AudioRecord audioRecord;
-    private boolean isRecording = false;
-
-    private WifiSignalManager wifiSignalManager;
-
-    private TelephonyManager telephonyManager;
-
-    private Handler lteUpdateHandler;
+    GoogleMap myMap;
+    LatLng currentLatLng;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,9 +62,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         mapSearchView = findViewById(R.id.mapSearch);
-        wifiSignalStrengthText = findViewById(R.id.wifiValue);
-        noiseLevelText = findViewById(R.id.noiseValue);
-        lteSignal = findViewById(R.id.lteValue);
 
         wifiSignalManager = new WifiSignalManager(this);
         wifiUpdateHandler = new Handler();
@@ -91,24 +69,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 wifiSignalManager.updateWifiSignalStrength();
-                updateNoiseLevel();
-                updateLTELevel();
-                wifiUpdateHandler.postDelayed(this, WIFI_UPDATE_INTERVAL);
+                wifiUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
             }
-        }, WIFI_UPDATE_INTERVAL);
+        }, UPDATE_INTERVAL);
 
-        initAudioRecorder();
 
-        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-
+        lteSignalManager = new LteSignalManager(this);
         lteUpdateHandler = new Handler();
         lteUpdateHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                updateLTELevel(); // Chiamata alla funzione per aggiornare il segnale LTE
-                lteUpdateHandler.postDelayed(this, LTE_UPDATE_INTERVAL);
+                lteSignalManager.updateLTELevel(); // Chiamata alla funzione per aggiornare il segnale LTE
+                lteUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
             }
-        }, LTE_UPDATE_INTERVAL);
+        }, UPDATE_INTERVAL);
 
         //cerca un nuovo punto sulla mappa
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -143,184 +117,177 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        getLasLocation();
 
-    }
+        // Inizializza la mappa
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
 
-    private void getLasLocation() {
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-            }, FINE_PERMISSION_CODE);
-            return;
-        }
-        Task<Location> task = fusedLocationProviderClient.getLastLocation();
-        task.addOnSuccessListener(new OnSuccessListener<Location>() {
-            @Override
-            public void onSuccess(Location location) {
-                if (location != null) {
-                    currentLocation = location;
+        noiseSignalManager = new NoiseSignalManager(this);
+        noiseButton = findViewById(R.id.record_audio);
 
-                    SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-                    mapFragment.getMapAsync(MainActivity.this);
-                }
-            }
+        noiseButton.setOnClickListener(v -> {
+            noiseUpdateHandler = new Handler();
+            // Richiedi l'autorizzazione per l'audio quando il pulsante viene premuto
+            requestRuntimePermissionAudio();
         });
+        // Richiedi l'autorizzazione per la posizione
+        findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionLocation());
+
     }
 
-    @Override
-    public void onMapReady(@NonNull GoogleMap googleMap) {
-        myMap = googleMap;
+    private void requestRuntimePermissionLocation() {
+        if (ActivityCompat.checkSelfPermission(this, FINE_PERMISSION_CODE) == PackageManager.PERMISSION_GRANTED) {
+            // Se l'autorizzazione è già concessa, ottieni la posizione
+            getLocation();
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_PERMISSION_CODE)) {
+            // Spiega l'importanza dell'autorizzazione all'utente
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
+                    .setTitle("Permission Required")
+                    .setCancelable(false)
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{FINE_PERMISSION_CODE},
+                                PERMISSION_LOCATION_CODE);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Cancel", (dialog, which) -> {
+                        dialog.dismiss();
+                    });
 
-        LatLng myLocation = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-        myMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
-        myMap.addMarker(new MarkerOptions().position(myLocation).title("My location"));
-
-        myMap.getUiSettings().setZoomControlsEnabled(true);
-        myMap.getUiSettings().setCompassEnabled(true);
-
-
-        // Stampa le coordinate della tua posizione con Log.d
-        Log.d("MainActivity", "My Location - Latitude: " + myLocation.latitude + ", Longitude: " + myLocation.longitude);
-
-        // Passa le coordinate reali della mappa al GridTileProvider
-        GridTileProvider gridTileProvider = new GridTileProvider();
-        myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
+            builder.show();
+        } else {
+            // Richiedi l'autorizzazione
+            ActivityCompat.requestPermissions(this, new String[]{FINE_PERMISSION_CODE}, PERMISSION_LOCATION_CODE);
+        }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_map, menu);
-        return true;
-    }
+    private void requestRuntimePermissionAudio() {
+        if (ActivityCompat.checkSelfPermission(this, PERMISSION_RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
 
-    //menu selezione tipi di mappa
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+            noiseUpdateHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    noiseSignalManager.updateNoiseLevel();
+                    noiseUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
+                }
+            }, UPDATE_INTERVAL);
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSION_RECORD_AUDIO)) {
 
-        int id = item.getItemId();
-        if (id == R.id.mapNone) {
-            myMap.setMapType(GoogleMap.MAP_TYPE_NONE);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("Questa app richiede RECORD_AUDIO per rilevare il rumore circostante.")
+                    .setTitle("Permission Required")
+                    .setCancelable(false)
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{PERMISSION_RECORD_AUDIO},
+                                PERMISSION_AUDIO_CODE);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Cancel", ((dialog, which) -> {
+                                dialog.dismiss();
+                            })
+                    );
+
+            builder.show();
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{PERMISSION_RECORD_AUDIO}, PERMISSION_AUDIO_CODE);
         }
-        if (id == R.id.mapNormal) {
-            myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-        }
-        if (id == R.id.mapSatellite) {
-            myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-        }
-        if (id == R.id.mapHybrid) {
-            myMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-        }
-        if (id == R.id.mapTerrian) {
-            myMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == FINE_PERMISSION_CODE) {
+        if (requestCode == PERMISSION_LOCATION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getLasLocation();
+                // Se l'autorizzazione è stata concessa, ottieni la posizione
+                getLocation();
+            } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_PERMISSION_CODE)) {
+                // L'utente ha negato l'autorizzazione in modo permanente, mostra un messaggio
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
+                        .setTitle("Permission Required")
+                        .setCancelable(false)
+                        .setPositiveButton("Settings", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+                builder.show();
             } else {
-                Toast.makeText(this, "Location permission denied, please allow the permission", Toast.LENGTH_SHORT).show();
+                // L'utente ha negato l'autorizzazione, richiedi di nuovo
+                requestRuntimePermissionLocation();
+            }
+        }
+        /*** Richiesta autorizzazione per l'audio ***/
+        else if (requestCode == PERMISSION_AUDIO_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+
+            } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSION_RECORD_AUDIO)) {
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("Questa app richiede RECORD_AUDIO per rilevare il rumore circostante.")
+                        .setTitle("Permission Required")
+                        .setCancelable(false)
+                        .setPositiveButton("Settings", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss()));
+
+                builder.show();
+            } else {
+                requestRuntimePermissionAudio();
             }
         }
 
     }
-
-
+    
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        wifiUpdateHandler.removeCallbacksAndMessages(null);
-    }
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        myMap = googleMap;
 
+        // Posiziona la mappa sulla posizione corrente
+        if (currentLatLng != null) {
+            myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
+        }
 
-    private void initAudioRecorder() {
-        int audioSource = MediaRecorder.AudioSource.MIC;
-        int sampleRate = 44100;
-        int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            // Richiedi l'autorizzazione per la registrazione audio
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, AUDIO_PERMISSION_CODE);
-        } else {
-            // Autorizzazione già concessa, inizia la registrazione audio
-            audioRecord = new AudioRecord(audioSource, sampleRate, channelConfig, audioFormat, bufferSize);
-            if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
-                audioRecord.startRecording();
-                isRecording = true;
-            } else {
-                noiseLevelText.setText("Noise Level: N/A");
-            }
+        // Abilita il pulsante "My Location"
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            myMap.setMyLocationEnabled(true);
         }
     }
 
-    private void updateNoiseLevel() {
-        if (isRecording) {
-            short[] audioData = new short[audioRecord.getBufferSizeInFrames()];
-            audioRecord.read(audioData, 0, audioData.length);
-            double noiseLevel = calculateNoiseLevel(audioData);
-            noiseLevelText.setText("Noise Level: " + noiseLevel + " dB");
-        } else {
-            noiseLevelText.setText("Noise Level: N/A");
+    private void getLocation() {
+        // Ottieni l'ultima posizione concesso
+
+        if (ActivityCompat.checkSelfPermission(this, FINE_PERMISSION_CODE) == PackageManager.PERMISSION_GRANTED) {
+            Task<Location> locationTask = fusedLocationProviderClient.getLastLocation();
+            locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+                    if (location != null) {
+                        currentLocation = location;
+                        currentLatLng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+                        // Aggiorna la mappa con la posizione corrente
+                        onMapReady(myMap);
+
+                    } else {
+                        Toast.makeText(MainActivity.this, "Location not available.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
         }
     }
-
-    private void updateLTELevel() {
-        if (isRecording) {
-            int lteLevel = getLTELevel();
-            lteSignal.setText("LTE Level: " + lteLevel + " dB");
-        } else {
-            lteSignal.setText("LTE Level: N/A");
-        }
-    }
-
-    private int getLTELevel() {
-        try {
-            // Ottieni la forza del segnale LTE
-            int lteSignalStrength = 0;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                lteSignalStrength = telephonyManager.getSignalStrength().getLevel();
-            }
-            Log.i("LTE_TAG", "Signal Strength = " + lteSignalStrength);
-            return lteSignalStrength;
-        } catch (Exception e) {
-            Log.e("LTE_TAG", "Exception: " + e.toString());
-            return 0; // Ritorna un valore di default se si verifica un'eccezione
-        }
-    }
-
-    private double calculateNoiseLevel(short[] audioData) {
-        double sum = 0;
-        for (short sample : audioData) {
-            sum += sample * sample;
-        }
-        double rms = Math.sqrt(sum / audioData.length);
-
-        // Imposta la soglia uditiva come valore di riferimento (0 dB)
-        double threshold = 1.0; // Implementa una funzione per calcolare la soglia uditiva
-
-        // Calcola il livello di rumore in dB rispetto alla soglia uditiva
-        double db = 20 * Math.log10(rms / threshold);
-
-        // Assicurati che il valore non sia negativo
-        if (db < 0) {
-            db = 0;
-        }
-
-        // Arrotonda il valore a due cifre dopo la virgola
-        db = Math.round(db * 100.0) / 100.0;
-
-        return db;
-    }
-
 }

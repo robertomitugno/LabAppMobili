@@ -6,7 +6,7 @@ import android.net.wifi.WifiManager;
 import android.widget.TextView;
 
 public class WifiSignalManager {
-    private Context context;
+    private final Context context;
 
     public WifiSignalManager(Context context) {
         this.context = context;
@@ -19,9 +19,9 @@ public class WifiSignalManager {
         if (wifiManager != null) {
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             int signalStrength = wifiInfo.getRssi() + 127;
-            wifiSignalStrengthText.setText("WiFi Signal Strength: " + signalStrength + " dBm");
+            wifiSignalStrengthText.setText("WiFi : " + signalStrength + " Mb/s");
         } else {
-            wifiSignalStrengthText.setText("WiFi Signal Strength: N/A");
+            wifiSignalStrengthText.setText(R.string.wifi_signal_strength_n_a);
         }
     }
 }

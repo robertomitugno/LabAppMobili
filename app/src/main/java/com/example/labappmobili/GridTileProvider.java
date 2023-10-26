@@ -4,14 +4,13 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.util.Log;
-
 import com.google.android.gms.maps.model.Tile;
 import com.google.android.gms.maps.model.TileProvider;
 
 import java.io.ByteArrayOutputStream;
 
 public class GridTileProvider implements TileProvider {
+
     private static final int TILE_SIZE_DP = 256;
 
     @Override
@@ -36,19 +35,20 @@ public class GridTileProvider implements TileProvider {
         Bitmap bitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
 
+        Paint paint = new Paint();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(Color.BLACK);
+        paint.setStrokeWidth(2);
+
         for (int i = 0; i < 4; i++) {
             int rectSize = tileSize / 4;
             int rectX = i * rectSize;
             int rectY = i * rectSize;
 
-            Paint paint = new Paint();
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2);
-
             canvas.drawRect(rectX, 0, rectX, tileSize, paint);
             canvas.drawRect(0, rectY, tileSize, rectY, paint);
         }
+
         return bitmap;
     }
-
 }
