@@ -24,6 +24,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.TileOverlay;
+import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import java.io.IOException;
@@ -229,6 +231,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
 
+                noiseUpdateHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        noiseSignalManager.updateNoiseLevel();
+                        noiseUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
+                    }
+                }, UPDATE_INTERVAL);
+
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSION_RECORD_AUDIO)) {
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -252,22 +262,36 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
-    
+
+
+    private TileOverlay greenGridOverlay;
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         myMap = googleMap;
 
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
-            myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
-        }
+            myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
 
-        // Abilita il pulsante "My Location"
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            myMap.setMyLocationEnabled(true);
+            // Abilita il pulsante "My Location"
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                    ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                myMap.setMyLocationEnabled(true);
+
+                // Crea un'istanza di GridTileProvider
+                GridTileProvider gridTileProvider = new GridTileProvider(this, currentLocation);
+
+                // Aggiungi la griglia alla mappa utilizzando un TileOverlay
+                if (greenGridOverlay != null) {
+                    greenGridOverlay.remove(); // Rimuovi la griglia verde esistente se presente
+                }
+                greenGridOverlay = myMap.addTileOverlay(new TileOverlayOptions()
+                        .tileProvider(gridTileProvider)
+                        .zIndex(0)); // Imposta lo zIndex a 0 o a un valore appropriato
+            }
         }
     }
+
 
     private void getLocation() {
         // Ottieni l'ultima posizione concesso
