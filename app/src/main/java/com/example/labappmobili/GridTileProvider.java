@@ -9,7 +9,8 @@ import android.graphics.Rect;
 import android.location.Location;
 import android.util.Log;
 
-import com.google.android.gms.maps.model.LatLng;
+import androidx.annotation.NonNull;
+
 import com.google.android.gms.maps.model.Tile;
 import com.google.android.gms.maps.model.TileProvider;
 
@@ -26,12 +27,8 @@ public class GridTileProvider implements TileProvider {
     // Size of square world map in meters, using WebMerc projection.
     private static final double MAP_SIZE = 20037508.34789244 * 2;
     private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
-
-    private int actualZoom = 12; // zoom when app is opened
-    private static int gridSize = 6;
-    private final int zoomMin = 5;
+    private static final int gridSize = 6;
     private final float scaleFactor;
-    String signalName;
 
     Location location;
 
@@ -62,7 +59,7 @@ public class GridTileProvider implements TileProvider {
 
     public Bitmap drawGridTile(int x, int y, int zoom) {
         // Synchronize copying the bitmap to avoid a race condition in some devices.
-        Bitmap copy = null;
+        Bitmap copy;
         synchronized (borderTile) {
             copy = borderTile.copy(Bitmap.Config.ARGB_8888, true);
         }
@@ -77,6 +74,7 @@ public class GridTileProvider implements TileProvider {
         mTextPaint.setTextSize(18 * scaleFactor);
 
         // in every Tile, create a Grid [gridSize:gridSize]
+        int zoomMin = 5;
         if (zoom > zoomMin) {
             for (int row = 0; row < gridSize; row++) {
                 for (int col = 0; col < gridSize; col++) {
@@ -88,7 +86,6 @@ public class GridTileProvider implements TileProvider {
 
                     Log.d("actualTile" , "actual : "+ actualTile);
                     Log.d("actualTile", "xsub : " + xSubCell + " ysub  : " + ySubCell);
-                    color = Color.TRANSPARENT;
                     // Check if the current Tile corresponds to the user's current location
                     if (location != null) {
                         double convertedLat = inMetersLatCoordinate(location.getLatitude());
@@ -137,21 +134,11 @@ public class GridTileProvider implements TileProvider {
         return copy;
     }
 
-    // Convert grid coordinates to LatLng
-    private LatLng convertGridToLatLng(int xSubCell, int ySubCell, int zoom) {
-        double tileDim = MAP_SIZE / Math.pow(2d, zoom);
-        double tileX = xSubCell * tileDim + TILES_ORIGIN[0];
-        double tileY = TILES_ORIGIN[1] - ySubCell * tileDim;
-        double lat = 90.0 - Math.toDegrees(2.0 * Math.atan(Math.exp(-tileY / ORIGIN_SHIFT)));
-        double lng = (tileX / ORIGIN_SHIFT) * 180.0;
-        return new LatLng(lat, lng);
-    }
-
 
     public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel) {
         double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
         tileDim = tileDim / gridSize;
-        Log.d("TILE DIM", String.valueOf(tileDim) + " metri");
+        Log.d("TILE DIM", tileDim + " metri");
 
         int tileX = (int) ((pointX - TILES_ORIGIN[0]) / tileDim);
         int tileY = (int) ((TILES_ORIGIN[1] - pointY) / tileDim);
@@ -201,6 +188,7 @@ public class GridTileProvider implements TileProvider {
             return lastDateTime;
         }
 
+        @NonNull
         @Override
         public String toString() {
             return "TileDataInfo{" +

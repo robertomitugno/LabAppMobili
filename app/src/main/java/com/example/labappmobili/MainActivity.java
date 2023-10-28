@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.SearchView;
 import android.widget.Toast;
@@ -16,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -26,7 +28,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import java.io.IOException;
 import java.util.List;
@@ -40,23 +41,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final String PERMISSION_RECORD_AUDIO = android.Manifest.permission.RECORD_AUDIO;
 
     private Handler wifiUpdateHandler;
-    private static final int UPDATE_INTERVAL = 1000;
+    private static final int UPDATE_INTERVAL = 5000;
 
     private WifiSignalManager wifiSignalManager;
     private LteSignalManager lteSignalManager;
     private NoiseSignalManager noiseSignalManager;
-
-
     private SearchView mapSearchView;
 
     private Handler lteUpdateHandler;
     private Handler noiseUpdateHandler;
-    private Button noiseButton;
 
     Location currentLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
     GoogleMap myMap;
     LatLng currentLatLng;
+
+    private TileOverlay greenGridOverlay;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,27 +65,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         mapSearchView = findViewById(R.id.mapSearch);
-
-        wifiSignalManager = new WifiSignalManager(this);
-        wifiUpdateHandler = new Handler();
-        wifiUpdateHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                wifiSignalManager.updateWifiSignalStrength();
-                wifiUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
-            }
-        }, UPDATE_INTERVAL);
-
-
-        lteSignalManager = new LteSignalManager(this);
-        lteUpdateHandler = new Handler();
-        lteUpdateHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                lteSignalManager.updateLTELevel(); // Chiamata alla funzione per aggiornare il segnale LTE
-                lteUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
-            }
-        }, UPDATE_INTERVAL);
 
         //cerca un nuovo punto sulla mappa
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -124,9 +104,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-
-        noiseSignalManager = new NoiseSignalManager(this);
-        noiseButton = findViewById(R.id.record_audio);
+        Button noiseButton = findViewById(R.id.record_audio);
 
         noiseButton.setOnClickListener(v -> {
             noiseUpdateHandler = new Handler();
@@ -168,6 +146,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (ActivityCompat.checkSelfPermission(this, PERMISSION_RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
 
+            //TODO mettere controllo localizzazione prima della richiesta dell'audio.
+            noiseSignalManager = new NoiseSignalManager(this, currentLocation);
             noiseUpdateHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -231,6 +211,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
 
+                //TODO mettere controllo localizzazione prima della richiesta dell'audio.
+                noiseSignalManager = new NoiseSignalManager(this, currentLocation);
                 noiseUpdateHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -263,11 +245,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-
-    private TileOverlay greenGridOverlay;
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         myMap = googleMap;
+
+        // Imposta il massimo livello di zoom a 20
+        myMap.setMaxZoomPreference(20);
 
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
@@ -285,9 +268,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (greenGridOverlay != null) {
                     greenGridOverlay.remove(); // Rimuovi la griglia verde esistente se presente
                 }
-                greenGridOverlay = myMap.addTileOverlay(new TileOverlayOptions()
-                        .tileProvider(gridTileProvider)
-                        .zIndex(0)); // Imposta lo zIndex a 0 o a un valore appropriato
+                greenGridOverlay = myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
             }
         }
     }
@@ -298,18 +279,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (ActivityCompat.checkSelfPermission(this, FINE_PERMISSION_CODE) == PackageManager.PERMISSION_GRANTED) {
             Task<Location> locationTask = fusedLocationProviderClient.getLastLocation();
-            locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    if (location != null) {
-                        currentLocation = location;
-                        currentLatLng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-                        // Aggiorna la mappa con la posizione corrente
-                        onMapReady(myMap);
+            locationTask.addOnSuccessListener(location -> {
+                if (location != null) {
+                    // Aggiorna la mappa con la posizione corrente
+                    currentLocation = location;
+                    currentLatLng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
 
-                    } else {
-                        Toast.makeText(MainActivity.this, "Location not available.", Toast.LENGTH_SHORT).show();
-                    }
+                    Log.d("posizione" , "lat : " + currentLocation.getLongitude() + " long " + currentLocation.getLatitude());
+
+                    lteSignalManager = new LteSignalManager(this, currentLocation);
+                    lteUpdateHandler = new Handler();
+                    lteUpdateHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            lteSignalManager.updateLTELevel(); // Chiamata alla funzione per aggiornare il segnale LTE
+                            lteUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
+                        }
+                    }, UPDATE_INTERVAL);
+
+
+                    wifiSignalManager = new WifiSignalManager(this, currentLocation);
+                    wifiUpdateHandler = new Handler();
+                    wifiUpdateHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            wifiSignalManager.updateWifiSignalStrength();
+                            wifiUpdateHandler.postDelayed(this, UPDATE_INTERVAL);
+                        }
+                    }, UPDATE_INTERVAL);
+
+
+                    onMapReady(myMap);
+
+                } else {
+                    Toast.makeText(MainActivity.this, "Location not available.", Toast.LENGTH_SHORT).show();
                 }
             });
         }
