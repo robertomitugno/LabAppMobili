@@ -1,8 +1,12 @@
 package com.example.labappmobili;
 
+import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
+import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -15,30 +19,49 @@ import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import androidx.room.Room;
 
+import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.Noise.NoiseDB;
 import com.example.labappmobili.RoomDB.Noise.NoiseDao;
+import com.google.android.gms.maps.GoogleMap;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class NoiseSignalManager {
 
     private static final int PERMISSION_AUDIO_CODE = 2;
     private final Context context;
     private final Location currentLocation;
+    private GoogleMap googleMap;
     private AudioRecord audioRecord;
     private boolean isRecording = false;
     private TextView noiseLevelText;
 
-    NoiseDB noiseDB;
+    static NoiseDB noiseDB;
 
     List<Noise> noiseList;
 
-    public NoiseSignalManager(Context context, Location currentLocation) {
+    public NoiseSignalManager(Context context, Location currentLocation, GoogleMap map) {
         this.context = context;
         this.currentLocation = currentLocation;
+        this.googleMap = map;
+    }
+
+    public static int getNoiseColor(double noiseValue) {
+        if (noiseValue > 50) {
+            return Color.GREEN;
+        } else if (noiseValue > 30) {
+            return Color.YELLOW;
+        } else if (noiseValue <= 30) {
+            return Color.RED;
+        } else {
+            return Color.TRANSPARENT;
+        }
     }
 
     private void startRecording() {
@@ -64,17 +87,24 @@ public class NoiseSignalManager {
     }
 
     public void updateNoiseLevel() {
-        noiseLevelText = ((MainActivity) context).findViewById(R.id.noiseValue);
+        noiseLevelText = ((MainActivity) context).findViewById(R.id.variableText);
+
+        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
         startRecording();
         if (isRecording) {
             short[] audioData = new short[audioRecord.getBufferSizeInFrames()];
             audioRecord.read(audioData, 0, audioData.length);
             double noiseLevel = calculateNoiseLevel(audioData);
-            noiseLevelText.setText("Livello di Rumore: " + noiseLevel + " dB");
+            noiseLevelText.setText("Rumore: " + noiseLevel + " dB");
 
-            insertNoiseMeasurement(currentLocation.getLatitude(), currentLocation.getLongitude(), noiseLevel);
+            insertNoiseMeasurement(latitudine, longitudine, noiseLevel);
             //getNoiseListInBackground();
+
+            // Passa il valore di lteValue alla classe GridTileProvider
+            GridTileProvider gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
+            GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 
         } else {
             noiseLevelText.setText("Livello di Rumore: N/D");
@@ -115,6 +145,30 @@ public class NoiseSignalManager {
 
         });
     }
+
+
+    static List<Noise> getAllNoiseValue() {
+        if (noiseDB == null) {
+            return new ArrayList<>(); // Il database non è ancora inizializzato
+        }
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        AtomicReference<List<Noise>> noiseListRef = new AtomicReference<>(new ArrayList<>());
+
+        executorService.execute(() -> {
+            NoiseDao noiseDao = noiseDB.getNoiseDao();
+            noiseListRef.set(noiseDao.getAllNoise());
+        });
+
+        executorService.shutdown();
+
+        while (!executorService.isTerminated()) {
+            // Attendi fino a quando il thread non è terminato
+        }
+
+        return noiseListRef.get();
+    }
+
 
 
     public void getNoiseListInBackground(){

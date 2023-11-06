@@ -1,0 +1,16 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_lte"
+        android:title="LTE"
+       />
+
+    <item
+        android:id="@+id/menu_wifi"
+        android:title="Wifi"
+        />
+
+    <item
+        android:id="@+id/menu_noise"
+        android:title="Noise"
+        android:icon="@drawable/noise" />
+</menu>

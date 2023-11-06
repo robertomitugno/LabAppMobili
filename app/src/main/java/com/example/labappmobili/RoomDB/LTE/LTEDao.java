@@ -3,7 +3,6 @@ package com.example.labappmobili.RoomDB.LTE;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
-import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
 import java.util.List;
@@ -11,8 +10,14 @@ import java.util.List;
 @Dao
 public interface LTEDao {
 
-    @Query("SELECT * FROM lteDB")
+    @Query("Select * from LteDB")
     List<LTE> getAllLte();
+
+    @Query("SELECT * FROM LteDB ORDER BY Id DESC LIMIT 5")
+    List<LTE> getLastFiveLte();
+
+    @Query("SELECT * FROM LteDB ORDER BY Id DESC LIMIT 1")
+    LTE getLastLte();
 
     @Insert
     void insertLTE(LTE lte);
@@ -20,6 +25,6 @@ public interface LTEDao {
     @Delete
     void deleteLTE(LTE lte);
 
-    @Query("UPDATE lteDB SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
-    void updateLTE(String latitudine, String longitudine, int id);
+    @Query("UPDATE LteDB SET Latitudine=:Latitudine , Longitudine =:Longitudine WHERE Id =:id")
+    void updateLTE(String Latitudine, String Longitudine, int id);
 }

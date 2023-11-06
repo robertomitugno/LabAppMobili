@@ -5,7 +5,7 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-@Entity (tableName = "WifiDB")
+@Entity (tableName = "WifiDatabase")
 public class WiFi {
 
     @ColumnInfo (name = "Latitudine")

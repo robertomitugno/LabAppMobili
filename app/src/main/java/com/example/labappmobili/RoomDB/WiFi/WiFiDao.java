@@ -11,7 +11,7 @@ import java.util.List;
 @Dao
 public interface WiFiDao {
 
-    @Query("SELECT * FROM WifiDB")
+    @Query("SELECT * FROM WifiDatabase")
     List<WiFi> getAllWifi();
 
     @Insert
@@ -20,6 +20,6 @@ public interface WiFiDao {
     @Delete
     void deleteWiFi(WiFi wifi);
 
-    @Query("UPDATE WifiDB SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
+    @Query("UPDATE WifiDatabase SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
     void updateLTE(String latitudine, String longitudine, int id);
 }

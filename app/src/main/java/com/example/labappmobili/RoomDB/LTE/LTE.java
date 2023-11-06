@@ -9,29 +9,29 @@ import androidx.room.PrimaryKey;
 public class LTE {
 
     @ColumnInfo (name = "Latitudine")
-    private double latitudine;
+    private double Latitudine;
 
     @ColumnInfo (name = "Id")
     @PrimaryKey (autoGenerate = true)
-    private int id;
+    private int Id;
 
     @ColumnInfo (name = "Longitudine")
-    private double longitudine;
+    private double Longitudine;
 
     @ColumnInfo (name = "LteValue")
     private int LteValue;
 
-    public LTE(double latitudine, int id, double longitudine, int LteValue) {
-        this.latitudine = latitudine;
-        this.id = id;
-        this.longitudine = longitudine;
+    public LTE(double Latitudine, int Id, double Longitudine, int LteValue) {
+        this.Latitudine = Latitudine;
+        this.Id = Id;
+        this.Longitudine = Longitudine;
         this.LteValue = LteValue;
     }
 
     @Ignore
-    public LTE(double latitudine, double longitudine, int LteValue) {
-        this.latitudine = latitudine;
-        this.longitudine = longitudine;
+    public LTE(double Latitudine, double Longitudine, int LteValue) {
+        this.Latitudine = Latitudine;
+        this.Longitudine = Longitudine;
         this.LteValue = LteValue;
     }
 
@@ -40,23 +40,23 @@ public class LTE {
     }
 
     public double getLatitudine() {
-        return latitudine;
+        return Latitudine;
     }
 
     public int getId() {
-        return id;
+        return Id;
     }
 
 
     public double getLongitudine() {
-        return longitudine;
+        return Longitudine;
     }
 
     @Override
     public String toString() {
         return "LTE{" +
-                "latitudine=" + latitudine +
-                ", longitudine=" + longitudine +
+                "Latitudine=" + Latitudine +
+                ", Longitudine=" + Longitudine +
                 ", LteValue=" + LteValue +
                 '}';
     }
