@@ -434,20 +434,33 @@ public class OptionsActivity extends AppCompatActivity {
     }
 
     private void clearAllDatabases() {
-        executorService.execute(() -> {
-            LTEDB ltedb = Room.databaseBuilder(OptionsActivity.this, LTEDB.class, "LteDB").build();
-            LTEDao lteDao = ltedb.getLTEDao();
-            lteDao.deleteAllLTE();
+        // Creare un AlertDialog per chiedere conferma
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Confermare l'eliminazione di tutti i dati dal database?")
+                .setTitle("Conferma Eliminazione")
+                .setCancelable(false)
+                .setPositiveButton("Conferma", (dialog, which) -> {
+                    // Conferma selezionata, procedere con l'eliminazione
+                    executorService.execute(() -> {
+                        LTEDB ltedb = Room.databaseBuilder(OptionsActivity.this, LTEDB.class, "LteDB").build();
+                        LTEDao lteDao = ltedb.getLTEDao();
+                        lteDao.deleteAllLTE();
 
-            WiFiDB wiFiDB = Room.databaseBuilder(OptionsActivity.this, WiFiDB.class, "WifiDatabase").build();
-            WiFiDao wiFiDao = wiFiDB.getWiFiDao();
-            wiFiDao.deleteAllWifi();
+                        WiFiDB wiFiDB = Room.databaseBuilder(OptionsActivity.this, WiFiDB.class, "WifiDatabase").build();
+                        WiFiDao wiFiDao = wiFiDB.getWiFiDao();
+                        wiFiDao.deleteAllWifi();
 
-            NoiseDB noiseDB = Room.databaseBuilder(OptionsActivity.this, NoiseDB.class, "NoiseDB").build();
-            NoiseDao noiseDao = noiseDB.getNoiseDao();
-            noiseDao.deleteAllNoise();
-        });
+                        NoiseDB noiseDB = Room.databaseBuilder(OptionsActivity.this, NoiseDB.class, "NoiseDB").build();
+                        NoiseDao noiseDao = noiseDB.getNoiseDao();
+                        noiseDao.deleteAllNoise();
+                    });
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Annulla", (dialog, which) -> dialog.dismiss());
+
+        builder.show();
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
