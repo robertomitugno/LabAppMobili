@@ -81,12 +81,23 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <Button
-        android:id="@+id/misura"
+        android:id="@+id/startMeasure"
         android:layout_width="46dp"
         android:layout_height="46dp"
         android:layout_marginStart="16dp"
         android:layout_marginBottom="16dp"
-        android:background="@drawable/ic_launcher_background"
+        android:background="@drawable/play_button"
+        app:layout_constraintBottom_toBottomOf="@+id/map"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/stopMeasure"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="invisible"
+        android:background="@drawable/stop"
         app:layout_constraintBottom_toBottomOf="@+id/map"
         app:layout_constraintStart_toStartOf="parent" />
 

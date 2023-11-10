@@ -166,7 +166,7 @@ public class GridTileProvider implements TileProvider {
                     Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                     if (color == Color.TRANSPARENT) {
                         cellPaint.setStyle(Paint.Style.FILL);
-                        cellPaint.setARGB(20, Color.red(color), Color.green(color), Color.blue(color));
+                        cellPaint.setARGB(40, Color.red(color), Color.green(color), Color.blue(color));
                     } else {
                         cellPaint.setStyle(Paint.Style.FILL);
                         cellPaint.setARGB(50, Color.red(color), Color.green(color), Color.blue(color));

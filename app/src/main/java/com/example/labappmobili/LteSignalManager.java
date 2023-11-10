@@ -131,37 +131,6 @@ public class LteSignalManager {
         });
     }
 
-    private int getColorForAverageLTELevel() {
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                //background task
-                LTElist = ltedb.getLTEDao().getLastFiveLte();
-            }
-        });
-
-        if (LTElist != null && LTElist.size() >= 5) {
-            int sum = 0;
-            int count = 0;
-
-            // Calcola la media dei valori delle ultime 5 misurazioni
-            for (int i = LTElist.size() - 1; i >= LTElist.size() - 5; i--) {
-                sum += LTElist.get(i).getLteValue();
-                count++;
-            }
-
-            int average = sum / count;
-
-            return getLteColor(average);
-        } else {
-            // Restituisci un colore di default se non ci sono abbastanza misurazioni
-            return Color.TRANSPARENT;
-        }
-
-
-    }
 
     public static int getLteColor(int valore){
         if (valore > 3) {
@@ -173,10 +142,6 @@ public class LteSignalManager {
         } else {
             return Color.TRANSPARENT;
         }
-    }
-
-    public static void removeGrid(){
-        GridManager.getInstance().removeGrid();
     }
 
 }

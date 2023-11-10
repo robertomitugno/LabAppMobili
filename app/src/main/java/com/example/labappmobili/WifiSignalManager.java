@@ -79,7 +79,6 @@ public class WifiSignalManager {
             insertWifiMeasurement(latitudine, longitudine, signalStrength);
         }
 
-        //getWifiListInBackground();
         GridTileProvider gridTileProvider = new GridTileProvider(context, getAllWifiValue());
         GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 

@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageButton;
@@ -67,13 +69,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     static boolean isWifiEnabled = true;
     static boolean isLteEnabled = true;
 
+    Button startMeasure, stopMeasure;
+
 
     // Dichiarazione del tuo handler
     private final Handler handler = new Handler();
 
     // Dichiarazione della tua variabile per l'intervallo di tempo
     private String measurementInterval = "5s";  // Default a 5 secondi
-    private String selectedMapType;
+    private String selectedMapType = "Normal";
 
 
     private boolean isMeasuring = false;
@@ -128,6 +132,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         lteCheckBox = findViewById(R.id.lteCheckBox);
         wifiCheckBox = findViewById(R.id.wifiCheckBox);
         rumoreCheckBox = findViewById(R.id.rumoreCheckBox);
+
+        stopMeasure = findViewById(R.id.stopMeasure);
 
 
         // Aggiungi un listener per gestire gli eventi di selezione
@@ -185,6 +191,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     handler.removeCallbacks(updateWifiLevelRunnable);
                     handler.removeCallbacks(updateRumoreLevelRunnable);
                     isMeasuring = false;
+
+                    startMeasure.setVisibility(View.VISIBLE);
+                    stopMeasure.setVisibility(View.INVISIBLE);
+
                     GridManager.getInstance().removeGrid();
                     //showToast("Errore generale");
                     variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
@@ -213,46 +223,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         this.measurementInterval = preferences.getString("measurementInterval", "5s");
 
+        startMeasure = findViewById(R.id.startMeasure);
+        startMeasure.setOnClickListener(v -> startMeasurement());
 
-        SharedPreferences preferencesMap = getSharedPreferences("MyPrefs", MODE_PRIVATE);
-        this.selectedMapType = preferences.getString("selectedMapType", "Normal");
 
-
-        /*** Listener per bottone misurazioni ***/
-        findViewById(R.id.misura).setOnClickListener(v -> {
-
-            if (isMeasuring) {
-                // Se è in corso una misurazione, arrestala
-                handler.removeCallbacks(updateLteLevelRunnable);
-                handler.removeCallbacks(updateWifiLevelRunnable);
-                handler.removeCallbacks(updateRumoreLevelRunnable);
-
-                isMeasuring = false;
-                showToast("Misurazione interrotta");
-                variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
-            } else {
-                // Altrimenti, avvia la misurazione
-                if (lteCheckBox.isChecked()) {
-                    isMeasuring = true;
-                    showToast("Misurazione Lte in corso...");
-                    handler.post(updateLteLevelRunnable);
-                } else if (wifiCheckBox.isChecked()) {
-                    // Esegui azioni per misurazione WiFi
-                    isMeasuring = true;
-                    showToast("Misurazione WiFi in corso...");
-                    handler.post(updateWifiLevelRunnable);
-                } else if (rumoreCheckBox.isChecked()) {
-                    // Esegui azioni per misurazione Rumore
-                    isMeasuring = true;
-                    showToast("Misurazione Rumore in corso...");
-                    handler.post(updateRumoreLevelRunnable);
-                } else {
-                    showToast("Seleziona un tipo di misurazione");
-                    isMeasuring = false;
-                }
-            }
-
-        });
+        stopMeasure = findViewById(R.id.stopMeasure);
+        stopMeasure.setOnClickListener(v ->  stopMeasurement());
 
 
         /*** Gestore bottone impostazioni ***/
@@ -265,6 +241,47 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    private void startMeasurement() {
+        if (isMeasuring) {
+            // Se è in corso una misurazione, arrestala
+            stopMeasurement();
+        } else {
+            // Altrimenti, avvia la misurazione
+            if (lteCheckBox.isChecked()) {
+                isMeasuring = true;
+                handler.post(updateLteLevelRunnable);
+            } else if (wifiCheckBox.isChecked()) {
+                isMeasuring = true;
+                handler.post(updateWifiLevelRunnable);
+            } else if (rumoreCheckBox.isChecked()) {
+                isMeasuring = true;
+                handler.post(updateRumoreLevelRunnable);
+            } else {
+                showToast("Seleziona un tipo di misurazione");
+                // Imposta la visibilità dei bottoni
+                startMeasure.setVisibility(View.VISIBLE);
+                stopMeasure.setVisibility(View.INVISIBLE);
+                isMeasuring = false;
+            }
+
+        }
+    }
+
+    private void stopMeasurement() {
+        // Interrompi la misurazione
+        handler.removeCallbacks(updateLteLevelRunnable);
+        handler.removeCallbacks(updateWifiLevelRunnable);
+        handler.removeCallbacks(updateRumoreLevelRunnable);
+
+        isMeasuring = false;
+
+        // Imposta la visibilità dei bottoni
+        startMeasure.setVisibility(View.VISIBLE);
+        stopMeasure.setVisibility(View.INVISIBLE);
+
+        variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
+        showToast("Misurazione interrotta");
+    }
 
 
     // Dichiarazione del runnable per eseguire l'azione periodica
@@ -273,12 +290,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void run() {
             // Chiamata al metodo updateLteLevel()
             if(currentLocation != null) {
+                startMeasure.setVisibility(View.INVISIBLE);
+                stopMeasure.setVisibility(View.VISIBLE);
+
+                showToast("Misurazione in corso...");
+
                 LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, currentLocation, myMap);
                 lteSignalManager.updateLTELevel();
             } else {
-                showToast("Posizione non disponibile.");
+                showToast("Posizione non disponibile. ");
                 handler.removeCallbacks(this);
                 isMeasuring = false;
+                // Imposta la visibilità dei bottoni
+                startMeasure.setVisibility(View.VISIBLE);
+                stopMeasure.setVisibility(View.INVISIBLE);
                 return;
             }
 
@@ -294,12 +319,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void run() {
             // Chiamata al metodo updateLteLevel()
             if(currentLocation != null) {
+                startMeasure.setVisibility(View.INVISIBLE);
+                stopMeasure.setVisibility(View.VISIBLE);
+
+                showToast("Misurazione in corso...");
+
                 WifiSignalManager wifiSignalManager = new WifiSignalManager(MainActivity.this, currentLocation, myMap);
                 wifiSignalManager.updateWifiSignalStrength();
             } else {
                 showToast("Posizione non disponibile.");
                 handler.removeCallbacks(this);
                 isMeasuring = false;
+                startMeasure.setVisibility(View.VISIBLE);
+                stopMeasure.setVisibility(View.INVISIBLE);
                 return;
             }
 
@@ -314,12 +346,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void run() {
             // Chiamata al metodo updateLteLevel()
             if(currentLocation != null) {
+                startMeasure.setVisibility(View.INVISIBLE);
+                stopMeasure.setVisibility(View.VISIBLE);
+
+                showToast("Misurazione in corso...");
+
                 NoiseSignalManager noiseSignalManager = new NoiseSignalManager(MainActivity.this, currentLocation, myMap);
                 noiseSignalManager.updateNoiseLevel();
             } else {
                 showToast("Posizione non disponibile.");
                 handler.removeCallbacks(this);
                 isMeasuring = false;
+                startMeasure.setVisibility(View.VISIBLE);
+                stopMeasure.setVisibility(View.INVISIBLE);
                 return;
             }
 
@@ -458,11 +497,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Imposta il massimo livello di zoom a 16
         myMap.setMaxZoomPreference(16);
 
-        if(selectedMapType == "Satellite") {
-            myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-        }else {
-            myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-        }
+        // Utilizza il valore selezionato dallo spinner per impostare il tipo di mappa
+        SharedPreferences preferencesMap = getSharedPreferences("PrefMap", MODE_PRIVATE);
+        String selectedMapType = preferencesMap.getString("selectedMapType", "Normal");
+        changeMapType(selectedMapType);
 
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
@@ -471,6 +509,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
                 myMap.setMyLocationEnabled(true);
             }
+        }
+
+
+
+        if (isMeasuring) {
+            startMeasure.setVisibility(View.INVISIBLE);
+            stopMeasure.setVisibility(View.VISIBLE);
+        } else {
+            startMeasure.setVisibility(View.VISIBLE);
+            stopMeasure.setVisibility(View.INVISIBLE);
+        }
+
+    }
+
+    private void changeMapType(String mapType) {
+        if (mapType.equals("Satellite")) {
+            myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+        } else {
+            myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         }
     }
 
@@ -495,15 +552,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onPause() {
         super.onPause();
-        // Se è in corso una misurazione, arrestala
-        handler.removeCallbacks(updateLteLevelRunnable);
-        handler.removeCallbacks(updateWifiLevelRunnable);
-        handler.removeCallbacks(updateRumoreLevelRunnable);
-        if(isMeasuring) {
-            isMeasuring = false;
-            showToast("Misurazione interrotta");
+        if (isMeasuring) {
+            stopMeasurement();
         }
-        variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
     }
 
     private void getLocation() {

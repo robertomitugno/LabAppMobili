@@ -234,7 +234,7 @@ public class OptionsActivity extends AppCompatActivity {
         selectMapSpinner.setAdapter(mapAdapter);
 
         // Ottieni la preferenza corrente dell'utente per il tipo di mappa
-        SharedPreferences preferencesMap = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        SharedPreferences preferencesMap = getSharedPreferences("PrefMap", MODE_PRIVATE);
         String selectedMapType = preferencesMap.getString("selectedMapType", "Normal"); // Imposta un valore di default, ad esempio "Normale"
 
         // Trova l'indice della preferenza corrente e imposta lo spinner
