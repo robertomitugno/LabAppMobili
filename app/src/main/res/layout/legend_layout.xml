@@ -1,0 +1,60 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="#FFFFFF"
+    android:padding="16dp"
+    android:id="@+id/legendLayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_alignParentStart="true"
+    android:layout_alignParentBottom="true"
+    android:layout_margin="16dp"
+    android:orientation="vertical">
+
+        <!-- Colore 1: Rosso -->
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="#FF0000" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30°C"
+            android:textSize="12sp" />
+
+        <!-- Colore 2: Arancione -->
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="#FFEB3B" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="25°C"
+            android:textSize="12sp" />
+
+        <!-- Colore 3: Giallo -->
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="#4CAF50" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="20°C"
+            android:textSize="12sp" />
+
+        <!-- Colore 4: Verde -->
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="#03A9F4" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="15°C"
+            android:textSize="12sp" />
+    </LinearLayout>

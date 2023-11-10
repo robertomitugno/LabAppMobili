@@ -1,4 +1,18 @@
 <resources>
     <string name="app_name">LabAppMobili</string>
     <string name="my_app_api_key">AIzaSyCfZDSzDqILz9We8NqjIQGUV4gq3MZbjko</string>
+    <string name="wifi">WiFi:</string>
+    <string name="wifi_signal_strength_n_a">WiFi non disponibile.</string>
+    <string name="lte_level_n_a">LTE non disponibile.</string>
+    <string name="rumore_level_n_a">Rumore non disponibile.</string>
+    <string name="location_permission_denied">Location permission denied, please allow the permission</string>
+
+    <string-array name="menu_options">
+        <item name="menu_wifi">WIFI</item>
+        <item name="menu_lte">LTE</item>
+        <item name="menu_noise">NOISE</item>
+    </string-array>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
 </resources>
