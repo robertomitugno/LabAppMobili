@@ -19,8 +19,8 @@ public interface NoiseDao {
     @Insert
     void insertNoise(Noise noise);
 
-    @Delete
-    void deleteNoise(Noise noise);
+    @Query("DELETE FROM NoiseDB")
+    void deleteAllNoise();
 
     @Query("UPDATE NoiseDB SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
     void updateNoise(String latitudine, String longitudine, int id);

@@ -13,6 +13,7 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +25,7 @@ import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.Noise.NoiseDB;
 import com.example.labappmobili.RoomDB.Noise.NoiseDao;
+import com.example.labappmobili.RoomDB.WiFi.WiFiDB;
 import com.google.android.gms.maps.GoogleMap;
 
 import java.util.ArrayList;
@@ -36,7 +38,7 @@ public class NoiseSignalManager {
 
     private static final int PERMISSION_AUDIO_CODE = 2;
     private final Context context;
-    private final Location currentLocation;
+    private Location currentLocation;
     private GoogleMap googleMap;
     private AudioRecord audioRecord;
     private boolean isRecording = false;
@@ -44,21 +46,25 @@ public class NoiseSignalManager {
 
     static NoiseDB noiseDB;
 
-    List<Noise> noiseList;
+
+    public NoiseSignalManager(Context context, GoogleMap map) {
+        this.context = context;
+        this.googleMap = map;
+    }
 
     public NoiseSignalManager(Context context, Location currentLocation, GoogleMap map) {
         this.context = context;
-        this.currentLocation = currentLocation;
         this.googleMap = map;
+        this.currentLocation = currentLocation;
     }
 
     public static int getNoiseColor(double noiseValue) {
         if (noiseValue > 50) {
-            return Color.GREEN;
+            return Color.RED;
         } else if (noiseValue > 30) {
             return Color.YELLOW;
         } else if (noiseValue <= 30) {
-            return Color.RED;
+            return Color.GREEN;
         } else {
             return Color.TRANSPARENT;
         }
@@ -87,28 +93,37 @@ public class NoiseSignalManager {
     }
 
     public void updateNoiseLevel() {
-        noiseLevelText = ((MainActivity) context).findViewById(R.id.variableText);
+        initializeRoomDatabase();
 
-        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        noiseLevelText = ((MainActivity) context).findViewById(R.id.variableText);
 
         startRecording();
         if (isRecording) {
             short[] audioData = new short[audioRecord.getBufferSizeInFrames()];
             audioRecord.read(audioData, 0, audioData.length);
             double noiseLevel = calculateNoiseLevel(audioData);
-            noiseLevelText.setText("Rumore: " + noiseLevel + " dB");
 
-            insertNoiseMeasurement(latitudine, longitudine, noiseLevel);
-            //getNoiseListInBackground();
+            if(currentLocation != null) {
+                double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+                double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
+                insertNoiseMeasurement(latitudine, longitudine, noiseLevel);
+
+            }
             // Passa il valore di lteValue alla classe GridTileProvider
             GridTileProvider gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
             GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 
+            //boolean boh = GridTileProvider.checkEmptyArea(currentLocation, getAllNoiseValue());
+            noiseLevelText.setText("Rumore: " + noiseLevel + " dB");
+
         } else {
             noiseLevelText.setText("Livello di Rumore: N/D");
         }
+    }
+
+    private void initializeRoomDatabase() {
+        noiseDB = Room.databaseBuilder(context, NoiseDB.class, "NoiseDB").build();
     }
 
     private double calculateNoiseLevel(short[] audioData) {
@@ -133,10 +148,10 @@ public class NoiseSignalManager {
 
 
     private void insertNoiseMeasurement(double latitudine, double longitudine, double noiseLevel) {
-
         Noise noiseMeasurement = new Noise(latitudine, longitudine, noiseLevel);
 
-        noiseDB = Room.databaseBuilder(context, NoiseDB.class, "NoiseDB").build();
+        Log.d("Misurazione","Inserimento rumore : " + latitudine + " : " + longitudine + " : " + noiseLevel);
+
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
             // Esegui l'operazione di inserimento nel database Room su un thread separato
@@ -167,40 +182,6 @@ public class NoiseSignalManager {
         }
 
         return noiseListRef.get();
-    }
-
-
-
-    public void getNoiseListInBackground(){
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        Handler handler = new Handler(Looper.getMainLooper());
-
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-
-                //background task
-                noiseList = noiseDB.getNoiseDao().getAllNoise();
-
-                //on finish task
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        StringBuilder sb = new StringBuilder();
-                        for(Noise noise : noiseList){
-                            sb.append(noise.getLatitudine() + " : " + noise.getLongitudine() +" -> " + noise.getNoiseValue());
-                            sb.append("\n");
-                        }
-
-                        String finalData = sb.toString();
-                        Toast.makeText(context, ""+finalData, Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        });
-
     }
 
 }

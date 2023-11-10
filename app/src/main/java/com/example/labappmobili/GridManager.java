@@ -20,9 +20,17 @@ public class GridManager {
     }
 
     public void setGrid(GoogleMap myMap, GridTileProvider gridTileProvider) {
-        if (gridOverlay != null) {
-            gridOverlay.remove(); // Rimuovi la griglia se è già presente
-        }
+        removeGrid();
+
         gridOverlay = myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
     }
+
+    public void removeGrid() {
+        // Rimuovi la visualizzazione della grid qui
+        if (gridOverlay != null) {
+            gridOverlay.remove();
+        }
+    }
+
+
 }

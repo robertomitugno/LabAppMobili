@@ -7,57 +7,40 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.location.Location;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.widget.Toast;
-
-import androidx.room.Room;
 
 import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDB;
-import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.google.android.gms.maps.model.Tile;
 import com.google.android.gms.maps.model.TileProvider;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class GridTileProvider implements TileProvider {
 
     private static final int TILE_SIZE_DP = 256;
-    private final Bitmap borderTile;
+    private Bitmap borderTile;
 
     private static final double[] TILES_ORIGIN = {-20037508.34789244, 20037508.34789244};
     // Size of square world map in meters, using WebMerc projection.
     private static final double MAP_SIZE = 20037508.34789244 * 2;
     private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
     private static final int gridSize = 6;
-    private final float scaleFactor;
+    private float scaleFactor;
     private final List<?> lista;
     private int color = 0;
-    private boolean startMeasurament = false;
+    private boolean startMeasuramentBackground = false;
     Location location;
-
-    LTEDB ltedb;
 
     Context context;
 
-    //Per inizio misurazione
-    public GridTileProvider(Context context, Location location, int color, List<?> lista) {
+    // Per inizio misurazione
+    public GridTileProvider(Context context, Location location, List<?> lista) {
         this.context = context;
-        scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
-        borderTile = Bitmap.createBitmap((int) (TILE_SIZE_DP * scaleFactor),
-                (int) (TILE_SIZE_DP * scaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(borderTile);
         this.location = location;
-        this.color = color;
-        this.startMeasurament = true;
+        this.startMeasuramentBackground = true;
         this.lista = lista;
     }
 
@@ -66,19 +49,13 @@ public class GridTileProvider implements TileProvider {
         scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
         borderTile = Bitmap.createBitmap((int) (TILE_SIZE_DP * scaleFactor),
                 (int) (TILE_SIZE_DP * scaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(borderTile);
         this.lista = lista;
-
     }
 
     @Override
     public Tile getTile(int x, int y, int zoom) {
         Bitmap coordTile = null;
-        if (startMeasurament) {
-            coordTile = drawGridTileMeasurament(x, y, zoom);
-        } else {
             coordTile = drawGridTile(x, y, zoom);
-        }
 
         if (coordTile != null) {
             return new Tile((int) (TILE_SIZE_DP), (int) (TILE_SIZE_DP), toByteArray(coordTile));
@@ -93,77 +70,43 @@ public class GridTileProvider implements TileProvider {
         return stream.toByteArray();
     }
 
-    public Bitmap drawGridTileMeasurament(int x, int y, int zoom) {
-        // Synchronize copying the bitmap to avoid a race condition in some devices.
-        Bitmap copy;
-        synchronized (borderTile) {
-            copy = borderTile.copy(Bitmap.Config.ARGB_8888, true);
-        }
-        int alpha = 120; // transparency
-        Canvas canvas = new Canvas(copy);
-        int color;
+    public static boolean checkEmptyArea(Location location, List<?> lista) {
 
-        int tileSize = (int) (TILE_SIZE_DP * scaleFactor);
-        int cellSize = tileSize / gridSize;
-        Paint mTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mTextPaint.setTextAlign(Paint.Align.CENTER);
-        mTextPaint.setTextSize(18 * scaleFactor);
+        if (location != null) {
 
-        // in every Tile, create a Grid [gridSize:gridSize]
-        int zoomMin = 5;
-        if (zoom > zoomMin) {
-            for (int row = 0; row < gridSize; row++) {
-                for (int col = 0; col < gridSize; col++) {
-                    // (x, y) of the subCell
-                    int xSubCell = x * gridSize + col;
-                    int ySubCell = y * gridSize + row;
-
-                    color = Color.TRANSPARENT;
-
-                    TileDataInfo actualTile = new TileDataInfo(xSubCell, ySubCell, zoom);
-
-                    if (location != null) {
-
-                        double convertedLat = inMetersLatCoordinate(location.getLatitude());
-                        double convertedLng = inMetersLngCoordinate(location.getLongitude());
-
-                        TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, zoom);
-
-                            if (actualTile.equals(tileFound)) {
-                                color = this.color;
-                                break;
-                            } else {
-                                color = Color.TRANSPARENT;
-                            }
+            double convertedLat = inMetersLatCoordinate(location.getLatitude());
+            double convertedLng = inMetersLngCoordinate(location.getLongitude());
+            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 12);
 
 
-                    } else {
-                        color = Color.TRANSPARENT;
+            for (Object object : lista) {
+
+                if (object instanceof LTE) {
+                    LTE lteItem = (LTE) object; // Cast esplicito a LTE
+                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 12);
+
+                    if (actualLteTile.equals(locationTile)) {
+                        return false;
                     }
+                } else if (object instanceof WiFi) {
+                    WiFi wifiItem = (WiFi) object;
+                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 12);
 
-                    // draw the Sub-Rectangle
-                    int cellLeft = col * cellSize;
-                    int cellTop = row * cellSize;
-                    int cellRight = cellLeft + cellSize;
-                    int cellBottom = cellTop + cellSize;
-                    Rect cellRect = new Rect(cellLeft, cellTop, cellRight, cellBottom);
-
-                    Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    if (color == Color.TRANSPARENT) {
-                        cellPaint.setStyle(Paint.Style.STROKE);
-                        cellPaint.setColor(Color.GRAY);
-                    } else {
-                        cellPaint.setStyle(Paint.Style.FILL);
-                        cellPaint.setARGB(alpha, Color.red(color), Color.green(color), Color.blue(color));
+                    if (actualWifiTile.equals(locationTile)) {
+                        return false;
                     }
-                    cellPaint.setStrokeWidth(0.5F);
-                    canvas.drawRect(cellRect, cellPaint);
+                } else if (object instanceof Noise) {
+                    Noise noiseItem = (Noise) object;
+                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 12);
+
+                    if (actualNoiseTile.equals(locationTile)) {
+                        return false;
+                    }
                 }
             }
         }
-        return copy;
+        return true;
     }
-
 
     public Bitmap drawGridTile(int x, int y, int zoom) {
         // Synchronize copying the bitmap to avoid a race condition in some devices.
@@ -172,7 +115,6 @@ public class GridTileProvider implements TileProvider {
             copy = borderTile.copy(Bitmap.Config.ARGB_8888, true);
         }
 
-        int alpha = 50; // transparency
         Canvas canvas = new Canvas(copy);
         int tileSize = (int) (TILE_SIZE_DP * scaleFactor);
         int cellSize = tileSize / gridSize;
@@ -181,19 +123,14 @@ public class GridTileProvider implements TileProvider {
         mTextPaint.setTextSize(18 * scaleFactor);
 
         // in every Tile, create a Grid [gridSize:gridSize]
-        int zoomMin = 5;
+        int zoomMin = 3;
         if (zoom > zoomMin) {
-
-
             for (int row = 0; row < gridSize; row++) {
                 for (int col = 0; col < gridSize; col++) {
                     int color = Color.TRANSPARENT;
-
                     int xSubCell = x * gridSize + col;
                     int ySubCell = y * gridSize + row;
                     TileDataInfo actualTile = new TileDataInfo(xSubCell, ySubCell, zoom);
-
-                    Log.d("prova", "PRIMA");
 
                     for (Object item : lista) { // Itera sulla lista
                         if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
@@ -220,7 +157,6 @@ public class GridTileProvider implements TileProvider {
                         }
                     }
 
-
                     int cellLeft = col * cellSize;
                     int cellTop = row * cellSize;
                     int cellRight = cellLeft + cellSize;
@@ -229,47 +165,36 @@ public class GridTileProvider implements TileProvider {
 
                     Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                     if (color == Color.TRANSPARENT) {
-                        cellPaint.setStyle(Paint.Style.STROKE);
-                        cellPaint.setColor(Color.GRAY);
+                        cellPaint.setStyle(Paint.Style.FILL);
+                        cellPaint.setARGB(20, Color.red(color), Color.green(color), Color.blue(color));
                     } else {
                         cellPaint.setStyle(Paint.Style.FILL);
-                        cellPaint.setARGB(alpha, Color.red(color), Color.green(color), Color.blue(color));
+                        cellPaint.setARGB(50, Color.red(color), Color.green(color), Color.blue(color));
                     }
                     cellPaint.setStrokeWidth(0.5F);
                     canvas.drawRect(cellRect, cellPaint);
-
-                }
                 }
             }
-
-
+        }
         return copy;
     }
 
-
-        public static TileDataInfo getSubTileByCoordinate ( double pointX, double pointY, int zoomLevel){
-            double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
-            tileDim = tileDim / gridSize;
-
-            int tileX = (int) ((pointX - TILES_ORIGIN[0]) / tileDim);
-            int tileY = (int) ((TILES_ORIGIN[1] - pointY) / tileDim);
-
-
-            return new TileDataInfo(tileX, tileY, zoomLevel);
-        }
-
-        public static double inMetersLatCoordinate ( double latitude){
-            if (latitude < 0) {
-                return -inMetersLatCoordinate(-latitude);
-            }
-            return (Math.log(Math.tan((90d + latitude) * Math.PI / 360d)) / (Math.PI / 180d)) * ORIGIN_SHIFT / 180d;
-        }
-
-        public static double inMetersLngCoordinate ( double longitude){
-            return longitude * ORIGIN_SHIFT / 180.0;
-        }
-
+    public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel) {
+        double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
+        tileDim = tileDim / gridSize;
+        int tileX = (int) ((pointX - TILES_ORIGIN[0]) / tileDim);
+        int tileY = (int) ((TILES_ORIGIN[1] - pointY) / tileDim);
+        return new TileDataInfo(tileX, tileY, zoomLevel);
     }
 
+    public static double inMetersLatCoordinate(double latitude) {
+        if (latitude < 0) {
+            return -inMetersLatCoordinate(-latitude);
+        }
+        return (Math.log(Math.tan((90d + latitude) * Math.PI / 360d)) / (Math.PI / 180d)) * ORIGIN_SHIFT / 180d;
+    }
 
-
+    public static double inMetersLngCoordinate(double longitude) {
+        return longitude * ORIGIN_SHIFT / 180.0;
+    }
+}

@@ -22,8 +22,8 @@ public interface LTEDao {
     @Insert
     void insertLTE(LTE lte);
 
-    @Delete
-    void deleteLTE(LTE lte);
+    @Query("DELETE FROM LteDB")
+    void deleteAllLTE();
 
     @Query("UPDATE LteDB SET Latitudine=:Latitudine , Longitudine =:Longitudine WHERE Id =:id")
     void updateLTE(String Latitudine, String Longitudine, int id);

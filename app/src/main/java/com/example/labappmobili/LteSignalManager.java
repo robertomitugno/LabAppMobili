@@ -4,13 +4,11 @@ import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
 import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Location;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.room.Room;
 
@@ -18,8 +16,6 @@ import com.example.labappmobili.RoomDB.LTE.LTE;
 import com.example.labappmobili.RoomDB.LTE.LTEDB;
 import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.model.TileOverlay;
-import com.google.android.gms.maps.model.TileOverlayOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,36 +27,27 @@ public class LteSignalManager {
 
     private static Context context;
     private GoogleMap googleMap;
-    private boolean isLTERequested = true;
+
     private TelephonyManager telephonyManager;
 
     Location currentLocation;
-
     static LTEDB ltedb;
-
-    private TileOverlay gridOverlay;
-
-    private static final int TILE_SIZE_DP = 256;
-    private final Bitmap borderTile;
-
-    private static final double[] TILES_ORIGIN = {-20037508.34789244, 20037508.34789244};
-    // Size of square world map in meters, using WebMerc projection.
-    private static final double MAP_SIZE = 20037508.34789244 * 2;
-    private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
-    private static final int gridSize = 6;
-    private final float scaleFactor;
+    static GridTileProvider gridTileProvider;
 
     static List<LTE> LTElist;
 
+
+    public LteSignalManager(Context context, GoogleMap map) {
+        this.context = context;
+        this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
+        this.googleMap = map;
+    }
 
     public LteSignalManager(Context context, Location currentLocation, GoogleMap map) {
         this.context = context;
         this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
         this.currentLocation = currentLocation;
         this.googleMap = map;
-        this.scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
-        this.borderTile = Bitmap.createBitmap((int) (TILE_SIZE_DP * scaleFactor),
-                (int) (TILE_SIZE_DP * scaleFactor), Bitmap.Config.ARGB_8888);
     }
 
 
@@ -69,25 +56,29 @@ public class LteSignalManager {
 
         TextView variableText = ((MainActivity) context).findViewById(R.id.variableText);
 
-
-        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
-
-        // Inserisci la misurazione nel database Room
         int lteLevel = getLTELevel();
-        insertLTEMeasurement(latitudine, longitudine, lteLevel);
+
+        if(currentLocation != null){
+            double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+            double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+
+            // Inserisci la misurazione nel database Room
+            insertLTEMeasurement(latitudine, longitudine, lteLevel);
+        }
 
         // Passa il valore di lteValue alla classe GridTileProvider
-        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllLteValue());
+        gridTileProvider = new GridTileProvider(context, getAllLteValue());
         GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 
+        //boolean boh = GridTileProvider.checkEmptyArea(currentLocation, getAllLteValue());
         variableText.setText("LTE : " + lteLevel + " dBm");
-        return lteLevel;
 
+        return lteLevel;
     }
 
 
     static List<LTE> getAllLteValue() {
+
         if (ltedb == null) {
             return new ArrayList<>(); // Il database non è ancora inizializzato
         }
@@ -129,7 +120,8 @@ public class LteSignalManager {
 
     private void insertLTEMeasurement(double latitudine, double longitudine, int lteLevel) {
         LTE lteMeasurement = new LTE(latitudine, longitudine, lteLevel);
-        ltedb = Room.databaseBuilder(context, LTEDB.class, "LteDB").build();
+
+        Log.d("Misurazione","Inserimento Lte : " + latitudine + " : " + longitudine + " : " + lteLevel);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
@@ -183,27 +175,8 @@ public class LteSignalManager {
         }
     }
 
-    public void getLteListInBackground(){
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-
-                //background task
-                LTElist = ltedb.getLTEDao().getAllLte();
-
-                StringBuilder sb = new StringBuilder();
-                   for(LTE lte : LTElist){
-                       sb.append(lte.getLatitudine() + " : " + lte.getLongitudine() +" -> " +lte.getLteValue());
-                       sb.append("\n");
-
-                   }
-                String finalData = sb.toString();
-                Toast.makeText(context, ""+finalData, Toast.LENGTH_LONG).show();
-            }
-        });
-
+    public static void removeGrid(){
+        GridManager.getInstance().removeGrid();
     }
 
 }

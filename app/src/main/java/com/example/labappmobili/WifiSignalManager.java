@@ -36,20 +36,19 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class WifiSignalManager {
     private final Context context;
-    private final Location currentLocation;
     private final GoogleMap googleMap;
     static WiFiDB wifidb;
-
-    List<WiFi> WifiList;
-
-    private TileOverlay gridOverlay;
+    private Location currentLocation;
 
 
+    public WifiSignalManager(Context context, GoogleMap map) {
+        this.context = context;
+        this.googleMap = map;
+    }
 
     public WifiSignalManager(Context context, Location currentLocation, GoogleMap map) {
         this.context = context;
         this.currentLocation = currentLocation;
-
         this.googleMap = map;
     }
 
@@ -66,27 +65,25 @@ public class WifiSignalManager {
     }
 
     public void updateWifiSignalStrength() {
-
         initializeRoomDatabase();
+
         WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        Log.d("prova", "wifimanager : " + wifiManager);
 
         TextView wifiSignalStrengthText = ((MainActivity) context).findViewById(R.id.variableText);
-
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        int signalStrength = wifiInfo.getRssi() + 127;
+        if(currentLocation != null) {
             double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
             double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-            int signalStrength = wifiInfo.getRssi() + 127;
-            wifiSignalStrengthText.setText("WiFi : " + signalStrength + " Mb/s");
-            Log.d("prova", "wifimanager");
-
             insertWifiMeasurement(latitudine, longitudine, signalStrength);
-            //getWifiListInBackground();
+        }
 
-            GridTileProvider gridTileProvider = new GridTileProvider(context, getAllWifiValue());
-            GridManager.getInstance().setGrid(googleMap, gridTileProvider);
+        //getWifiListInBackground();
+        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllWifiValue());
+        GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 
+        wifiSignalStrengthText.setText("WiFi : " + signalStrength + " Mb/s");
 
     }
     private void initializeRoomDatabase() {
@@ -95,6 +92,8 @@ public class WifiSignalManager {
 
     private void insertWifiMeasurement(double latitudine, double longitudine, double signalStrength) {
         WiFi wifiMeasurement = new WiFi(latitudine, longitudine, signalStrength);
+
+        Log.d("Misurazione","Inserimento rumore : " + latitudine + " : " + longitudine + " : " + signalStrength);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
@@ -127,50 +126,5 @@ public class WifiSignalManager {
 
         return wifiListRef.get();
     }
-
-    public void getWifiListInBackground(){
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        Handler handler = new Handler(Looper.getMainLooper());
-
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-
-                //background task
-                WifiList = wifidb.getWiFiDao().getAllWifi();
-
-
-                //on finish task
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        StringBuilder sb = new StringBuilder();
-                        for(WiFi wifi : WifiList){
-                            sb.append(wifi.getLatitudine() + " : " + wifi.getLongitudine() +" -> " +wifi.getWiFiValue());
-                            sb.append("\n");
-                        }
-
-                        String finalData = sb.toString();
-                        Toast.makeText(context, ""+finalData, Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        });
-
-    }
-
-    public void setGrid(GoogleMap myMap, GridTileProvider gridTileProvider) {
-        // Aggiungi la griglia alla mappa utilizzando un TileOverlay
-        Log.d("prova", "setGrid");
-
-        if (gridOverlay != null) {
-            Log.d("prova", "if setgrid");
-            gridOverlay.remove(); // Rimuovi la griglia se è già presente
-        }
-        gridOverlay = myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
-    }
-
 
 }
