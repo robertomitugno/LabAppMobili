@@ -21,7 +21,6 @@ public class GridManager {
 
     public void setGrid(GoogleMap myMap, GridTileProvider gridTileProvider) {
         removeGrid();
-
         gridOverlay = myMap.addTileOverlay(new TileOverlayOptions().tileProvider(gridTileProvider));
     }
 
@@ -30,6 +29,11 @@ public class GridManager {
         if (gridOverlay != null) {
             gridOverlay.remove();
         }
+    }
+
+    public boolean isVisible() {
+        // Restituisci true se la griglia è attualmente visibile, altrimenti false
+        return gridOverlay != null && gridOverlay.isVisible();
     }
 
 

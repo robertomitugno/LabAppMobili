@@ -45,7 +45,6 @@ import java.util.concurrent.Executors;
 public class OptionsActivity extends AppCompatActivity {
 
     private Switch switchLocation, switchLte, switchWifi, switchNoise, switchNotification;
-    private TextView textClear, textMisurazioni;
     private ImageButton imageButton;
     private Button buttonClear;
 
@@ -66,10 +65,10 @@ public class OptionsActivity extends AppCompatActivity {
 
         switchLte = findViewById(R.id.switchLte);
         switchWifi = findViewById(R.id.switchWifi);
-        textClear = findViewById(R.id.textClear);
+        TextView textClear = findViewById(R.id.textClear);
         buttonClear = findViewById(R.id.buttonClear);
         imageButton = findViewById(R.id.imageButton);
-        textMisurazioni = findViewById(R.id.textMisurazioni);
+        TextView textMisurazioni = findViewById(R.id.textMisurazioni);
 
         checkSwitchLocation();
         checkSwitchAudio();
@@ -158,7 +157,7 @@ public class OptionsActivity extends AppCompatActivity {
 
         switchNotification.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
-                requestRuntimeNotification();
+                requestRuntimePermissionNotification();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
@@ -193,7 +192,7 @@ public class OptionsActivity extends AppCompatActivity {
         buttonClear.setOnClickListener(v -> clearAllDatabases());
 
         Spinner selectSpinner = findViewById(R.id.select);
-        String[] options = {"5s", "10s", "30s", "1m"};
+        String[] options = {"1m", "5m", "10m", "5s"};
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, options);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -260,43 +259,29 @@ public class OptionsActivity extends AppCompatActivity {
 
 
 
-    private void requestRuntimeNotification() {
-        if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            // Il permesso è già concesso, puoi procedere con le notifiche
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
+    private void requestRuntimePermissionNotification() {
+        Log.d("prova","entro notifiche");
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
+            // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
+            builder.setMessage("Questa app richiede l'autorizzazione per le notifiche.")
                     .setTitle("Permission Required")
                     .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION},
+                                PERMISSION_NOTIFICATION_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                    .setNegativeButton("Cancel", (dialog, which) -> {
+                        dialog.dismiss();
+                    });
 
             builder.show();
-
-
         } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-            builder.show();
+            // Richiedi l'autorizzazione
+            Log.d("prova","entro notifiche ELSE");
+            ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
         }
-        checkSwitchNotification();
     }
 
 
@@ -323,6 +308,7 @@ public class OptionsActivity extends AppCompatActivity {
         }
 
     }
+
 
     private void requestRuntimeLocation() {
         if (ActivityCompat.checkSelfPermission(this, MainActivity.FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
@@ -360,22 +346,11 @@ public class OptionsActivity extends AppCompatActivity {
 
         } else {
             // Richiedi l'autorizzazione
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            ActivityCompat.requestPermissions(this, new String[]{FINE_LOCATION_PERMISSION}, PERMISSION_LOCATION_CODE);
 
-            builder.show();
         }
     }
+
 
     private void checkSwitchLocation(){
 

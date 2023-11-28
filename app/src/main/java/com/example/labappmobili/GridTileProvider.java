@@ -10,13 +10,17 @@ import android.location.Location;
 import android.util.Log;
 
 import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.LTE.LTEDao_Impl;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.google.android.gms.maps.model.Tile;
 import com.google.android.gms.maps.model.TileProvider;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class GridTileProvider implements TileProvider {
 
@@ -35,6 +39,8 @@ public class GridTileProvider implements TileProvider {
     Location location;
 
     Context context;
+
+    static int zoom = 0;
 
     // Per inizio misurazione
     public GridTileProvider(Context context, Location location, List<?> lista) {
@@ -61,6 +67,8 @@ public class GridTileProvider implements TileProvider {
             return new Tile((int) (TILE_SIZE_DP), (int) (TILE_SIZE_DP), toByteArray(coordTile));
         }
 
+        this.zoom = zoom;
+
         return NO_TILE;
     }
 
@@ -76,28 +84,28 @@ public class GridTileProvider implements TileProvider {
 
             double convertedLat = inMetersLatCoordinate(location.getLatitude());
             double convertedLng = inMetersLngCoordinate(location.getLongitude());
-            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 12);
+            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 12, 0);
 
 
             for (Object object : lista) {
 
                 if (object instanceof LTE) {
                     LTE lteItem = (LTE) object; // Cast esplicito a LTE
-                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 12);
+                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 12, 0);
 
                     if (actualLteTile.equals(locationTile)) {
                         return false;
                     }
                 } else if (object instanceof WiFi) {
                     WiFi wifiItem = (WiFi) object;
-                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 12);
+                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 12, 0);
 
                     if (actualWifiTile.equals(locationTile)) {
                         return false;
                     }
                 } else if (object instanceof Noise) {
                     Noise noiseItem = (Noise) object;
-                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 12);
+                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 12, 0);
 
                     if (actualNoiseTile.equals(locationTile)) {
                         return false;
@@ -108,7 +116,9 @@ public class GridTileProvider implements TileProvider {
         return true;
     }
 
+    //TODO richiedere la media degli utlimi x valori per colorare le piastrelle all'utente
     public Bitmap drawGridTile(int x, int y, int zoom) {
+
         // Synchronize copying the bitmap to avoid a race condition in some devices.
         Bitmap copy;
         synchronized (borderTile) {
@@ -124,38 +134,58 @@ public class GridTileProvider implements TileProvider {
 
         // in every Tile, create a Grid [gridSize:gridSize]
         int zoomMin = 3;
+
         if (zoom > zoomMin) {
             for (int row = 0; row < gridSize; row++) {
                 for (int col = 0; col < gridSize; col++) {
+
+                    int contatore = 0;
                     int color = Color.TRANSPARENT;
                     int xSubCell = x * gridSize + col;
                     int ySubCell = y * gridSize + row;
-                    TileDataInfo actualTile = new TileDataInfo(xSubCell, ySubCell, zoom);
+
+                    //tile da disegnare
+                    TileDataInfo actualTile = new TileDataInfo(xSubCell, ySubCell, zoom, 0);
+
+                    List<Object> cellValues = new ArrayList<>();
 
                     for (Object item : lista) { // Itera sulla lista
                         if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
                             LTE lteItem = (LTE) item; // Cast esplicito a LTE
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom);
+                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                color = LteSignalManager.getLteColor(lteItem.getLteValue());
-                                break;
+                                contatore++;
+                                cellValues.add(lteItem);
+                                Log.d("prova","contatore : " + contatore);
                             }
                         } else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
                             WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom);
+                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                color = WifiSignalManager.getWifiColor(wifiItem.getWiFiValue());
-                                break;
+                                contatore++;
+                                cellValues.add(wifiItem);
+                                Log.d("prova","contatore : " + contatore);
                             }
                         } else if (item instanceof Noise) {
                             Noise noiseItem = (Noise) item;
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom);
+                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                color = NoiseSignalManager.getNoiseColor(noiseItem.getNoiseValue());
-                                break;
+                                contatore++;
+                                cellValues.add(noiseItem);
+                                Log.d("prova","contatore : " + contatore);
                             }
                         }
+
                     }
+
+                    // Limita la lista agli ultimi 5 valori
+                    if (cellValues.size() > 5) {
+                        cellValues = cellValues.subList(cellValues.size() - 5, cellValues.size());
+                        color = calculateAverage(cellValues);
+                    } else if(!cellValues.isEmpty()){
+                        color = calculateAverage(cellValues);
+                    }
+
 
                     int cellLeft = col * cellSize;
                     int cellTop = row * cellSize;
@@ -169,22 +199,109 @@ public class GridTileProvider implements TileProvider {
                         cellPaint.setARGB(40, Color.red(color), Color.green(color), Color.blue(color));
                     } else {
                         cellPaint.setStyle(Paint.Style.FILL);
-                        cellPaint.setARGB(50, Color.red(color), Color.green(color), Color.blue(color));
+                        cellPaint.setARGB(80, Color.red(color), Color.green(color), Color.blue(color));
                     }
                     cellPaint.setStrokeWidth(0.5F);
                     canvas.drawRect(cellRect, cellPaint);
+
                 }
             }
         }
         return copy;
     }
 
-    public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel) {
+
+    // Metodo per calcolare la media di una lista di valori
+    private int calculateAverage(List<Object> values) {
+        if (values.isEmpty()) {
+            Log.d("prova", "TRASPARENT");
+            return Color.TRANSPARENT; // Ritorna un valore di default se la lista è vuota
+        }
+
+        // Calcola la media
+        double sum = 0;
+        for (Object value : values) {
+            if(value instanceof LTE){
+                sum += LteSignalManager.getLteColor(((LTE) value).getLteValue());
+            } else if(value instanceof WiFi){
+                sum += WifiSignalManager.getWifiColor(((WiFi) value).getWiFiValue());
+            } else if(value instanceof Noise){
+                sum += NoiseSignalManager.getNoiseColor(((Noise) value).getNoiseValue());
+            }
+        }
+        double average = sum / values.size();
+
+        Log.d("prova","avg : " + average);
+
+        // Restituisci il colore basato sulla media
+        return (int) Math.round(average);
+    }
+
+
+    public static String checkTimeArea(Location currentLocation, List<?> lista ,long time){
+
+        Date date = new Date();
+
+        double convertedLat = inMetersLatCoordinate(currentLocation.getLatitude());
+        double convertedLng = inMetersLngCoordinate(currentLocation.getLongitude());
+        TileDataInfo myTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, zoom, 0);
+
+        for (Object item : lista) { // Itera sulla lista
+
+            if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
+                LTE lteItem = (LTE) item; // Cast esplicito a LTE
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
+                if (myTile.equals(tileFound)) {
+                    if((date.getTime() - lteItem.getDate()) < time){
+                        return formatRemainingTime(time, date.getTime() - ((LTE) item).getDate());
+                    }
+                }
+            }
+
+            else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
+                WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+                if (myTile.equals(tileFound)) {
+                    if((date.getTime() - wifiItem.getDate()) < time){
+                        return formatRemainingTime(time, date.getTime() - ((WiFi) item).getDate());
+                    }
+                }
+            }
+
+            else if (item instanceof Noise) {
+                Noise noiseItem = (Noise) item;
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
+                if (myTile.equals(tileFound)) {
+                    if((date.getTime() - noiseItem.getDate()) < time){
+                        return formatRemainingTime(time, date.getTime() - ((Noise) item).getDate());
+                    }
+                }
+            }
+        }
+
+        return "Errore nella misurazione.";
+    }
+
+    private static String formatRemainingTime(long thresholdTime, long timeDifference) {
+        long remainingMinutes = TimeUnit.MILLISECONDS.toMinutes(thresholdTime - timeDifference);
+        long remainingSeconds = TimeUnit.MILLISECONDS.toSeconds(thresholdTime - timeDifference) % 60;
+
+        if (remainingMinutes > 0) {
+            return "Attendere ancora " + remainingMinutes + " minuti e " + remainingSeconds + " secondi";
+        } else {
+            return "Attendere ancora " + remainingSeconds + " secondi";
+        }
+    }
+
+
+
+
+    public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel, long date) {
         double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
         tileDim = tileDim / gridSize;
         int tileX = (int) ((pointX - TILES_ORIGIN[0]) / tileDim);
         int tileY = (int) ((TILES_ORIGIN[1] - pointY) / tileDim);
-        return new TileDataInfo(tileX, tileY, zoomLevel);
+        return new TileDataInfo(tileX, tileY, zoomLevel, date);
     }
 
     public static double inMetersLatCoordinate(double latitude) {

@@ -21,18 +21,23 @@ public class LTE {
     @ColumnInfo (name = "LteValue")
     private int LteValue;
 
-    public LTE(double Latitudine, int Id, double Longitudine, int LteValue) {
+    @ColumnInfo (name = "Date")
+    private long Date;
+
+    public LTE(double Latitudine, int Id, double Longitudine, int LteValue, long Date) {
         this.Latitudine = Latitudine;
         this.Id = Id;
         this.Longitudine = Longitudine;
         this.LteValue = LteValue;
+        this.Date = Date;
     }
 
     @Ignore
-    public LTE(double Latitudine, double Longitudine, int LteValue) {
+    public LTE(double Latitudine, double Longitudine, int LteValue, long Date) {
         this.Latitudine = Latitudine;
         this.Longitudine = Longitudine;
         this.LteValue = LteValue;
+        this.Date = Date;
     }
 
     public int getLteValue() {
@@ -43,21 +48,27 @@ public class LTE {
         return Latitudine;
     }
 
+    @Override
+    public String toString() {
+        return "LTE{" +
+                "Latitudine=" + Latitudine +
+                ", Id=" + Id +
+                ", Longitudine=" + Longitudine +
+                ", LteValue=" + LteValue +
+                '}';
+    }
+
     public int getId() {
         return Id;
     }
 
+    public long getDate() {
+        return Date;
+    }
 
     public double getLongitudine() {
         return Longitudine;
     }
 
-    @Override
-    public String toString() {
-        return "LTE{" +
-                "Latitudine=" + Latitudine +
-                ", Longitudine=" + Longitudine +
-                ", LteValue=" + LteValue +
-                '}';
-    }
+
 }

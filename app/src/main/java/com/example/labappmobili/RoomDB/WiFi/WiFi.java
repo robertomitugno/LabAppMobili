@@ -21,20 +21,27 @@ public class WiFi {
     @ColumnInfo (name = "WiFiValue")
     private double WiFiValue;
 
+    @ColumnInfo (name = "Date")
+    private long Date;
 
-    public WiFi(double latitudine, int id, double longitudine, double WiFiValue) {
+    public WiFi(double latitudine, int id, double longitudine, double WiFiValue, long Date) {
         this.latitudine = latitudine;
         this.id = id;
         this.longitudine = longitudine;
         this.WiFiValue = WiFiValue;
+        this.Date = Date;
     }
 
     @Ignore
-    public WiFi(double latitudine, double longitudine, double WiFiValue) {
+    public WiFi(double latitudine, double longitudine, double WiFiValue, long Date) {
         this.latitudine = latitudine;
         this.longitudine = longitudine;
         this.WiFiValue = WiFiValue;
+        this.Date = Date;
+    }
 
+    public long getDate() {
+        return Date;
     }
 
     public double getLatitudine() {
@@ -52,4 +59,16 @@ public class WiFi {
     public double getWiFiValue() {
         return WiFiValue;
     }
+
+    @Override
+    public String toString() {
+        return "WiFi{" +
+                "latitudine=" + latitudine +
+                ", id=" + id +
+                ", longitudine=" + longitudine +
+                ", WiFiValue=" + WiFiValue +
+                ", Date=" + Date +
+                '}';
+    }
+
 }

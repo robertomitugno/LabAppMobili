@@ -21,20 +21,24 @@ public class Noise {
     @ColumnInfo (name = "NoiseValue")
     private double noiseValue;
 
+    @ColumnInfo (name = "Date")
+    private long Date;
 
-    public Noise(double latitudine, int id, double longitudine, double noiseValue) {
+
+    public Noise(double latitudine, int id, double longitudine, double noiseValue, long Date) {
         this.latitudine = latitudine;
         this.id = id;
         this.longitudine = longitudine;
         this.noiseValue = noiseValue;
+        this.Date = Date;
     }
 
     @Ignore
-    public Noise(double latitudine, double longitudine, double noiseValue) {
+    public Noise(double latitudine, double longitudine, double noiseValue, long Date) {
         this.latitudine = latitudine;
         this.longitudine = longitudine;
         this.noiseValue = noiseValue;
-
+        this.Date = Date;
     }
 
     public double getLatitudine() {
@@ -51,5 +55,20 @@ public class Noise {
 
     public double getNoiseValue() {
         return noiseValue;
+    }
+
+    public long getDate() {
+        return Date;
+    }
+
+    @Override
+    public String toString() {
+        return "Noise{" +
+                "latitudine=" + latitudine +
+                ", id=" + id +
+                ", longitudine=" + longitudine +
+                ", noiseValue=" + noiseValue +
+                ", Date=" + Date +
+                '}';
     }
 }

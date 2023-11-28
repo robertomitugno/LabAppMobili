@@ -1,7 +1,6 @@
 package com.example.labappmobili.RoomDB.Noise;
 
 import androidx.room.Dao;
-import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
@@ -22,6 +21,4 @@ public interface NoiseDao {
     @Query("DELETE FROM NoiseDB")
     void deleteAllNoise();
 
-    @Query("UPDATE NoiseDB SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
-    void updateNoise(String latitudine, String longitudine, int id);
 }

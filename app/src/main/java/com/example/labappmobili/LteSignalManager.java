@@ -6,9 +6,11 @@ import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
 import android.content.Context;
 import android.graphics.Color;
 import android.location.Location;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.room.Room;
 
@@ -18,6 +20,7 @@ import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.google.android.gms.maps.GoogleMap;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,7 +31,7 @@ public class LteSignalManager {
     private static Context context;
     private GoogleMap googleMap;
 
-    private TelephonyManager telephonyManager;
+    private static TelephonyManager telephonyManager;
 
     Location currentLocation;
     static LTEDB ltedb;
@@ -41,6 +44,7 @@ public class LteSignalManager {
         this.context = context;
         this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
         this.googleMap = map;
+        initializeRoomDatabase();
     }
 
     public LteSignalManager(Context context, Location currentLocation, GoogleMap map) {
@@ -48,37 +52,22 @@ public class LteSignalManager {
         this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
         this.currentLocation = currentLocation;
         this.googleMap = map;
+        initializeRoomDatabase();
     }
 
 
     int updateLTELevel() {
-        initializeRoomDatabase(); // Inizializza il database Room
-
-        TextView variableText = ((MainActivity) context).findViewById(R.id.variableText);
-
-        int lteLevel = getLTELevel();
-
-        if(currentLocation != null){
-            double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-            double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
-
-            // Inserisci la misurazione nel database Room
-            insertLTEMeasurement(latitudine, longitudine, lteLevel);
-        }
-
-        // Passa il valore di lteValue alla classe GridTileProvider
-        gridTileProvider = new GridTileProvider(context, getAllLteValue());
-        GridManager.getInstance().setGrid(googleMap, gridTileProvider);
 
         //boolean boh = GridTileProvider.checkEmptyArea(currentLocation, getAllLteValue());
-        variableText.setText("LTE : " + lteLevel + " dBm");
+        //variableText.setText("LTE : " + lteLevel + " dBm");
 
-        return lteLevel;
+        getLteListInBackground();
+
+        return 0;
     }
 
 
     static List<LTE> getAllLteValue() {
-
         if (ltedb == null) {
             return new ArrayList<>(); // Il database non è ancora inizializzato
         }
@@ -100,11 +89,11 @@ public class LteSignalManager {
         return lteListRef.get();
     }
 
-    private void initializeRoomDatabase() {
+    private static void initializeRoomDatabase() {
         ltedb = Room.databaseBuilder(context, LTEDB.class, "LteDB").build();
     }
 
-    private int getLTELevel() {
+    static int getLTELevel() {
         try {
             // Ottieni la forza del segnale LTE
             int lteSignalStrength = 0;
@@ -118,10 +107,27 @@ public class LteSignalManager {
     }
 
 
-    private void insertLTEMeasurement(double latitudine, double longitudine, int lteLevel) {
-        LTE lteMeasurement = new LTE(latitudine, longitudine, lteLevel);
+    static String insertLTEMeasurement(Location currentLocation, long time) {
 
-        Log.d("Misurazione","Inserimento Lte : " + latitudine + " : " + longitudine + " : " + lteLevel);
+        initializeRoomDatabase(); // Inizializza il database Room
+
+        Date date = new Date();
+
+        double latitudine = 0;
+        double longitudine = 0;
+        int lteLevel = getLTELevel();
+
+        if(currentLocation != null){
+            latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+            longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+
+        }
+
+        if(GridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time).startsWith("Attendere")){
+            return GridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time);
+        }
+
+        LTE lteMeasurement = new LTE(latitudine, longitudine, lteLevel, date.getTime());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
@@ -129,6 +135,16 @@ public class LteSignalManager {
             LTEDao lteDao = ltedb.getLTEDao();
             lteDao.insertLTE(lteMeasurement);
         });
+
+        //getLteListInBackground();
+
+        return "Misurazione completata";
+    }
+
+
+    void showLteMap(){
+        gridTileProvider = new GridTileProvider(context, getAllLteValue());
+        GridManager.getInstance().setGrid(googleMap, gridTileProvider);
     }
 
 
@@ -144,5 +160,38 @@ public class LteSignalManager {
         }
     }
 
+
+    public static void getLteListInBackground(){
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        executorService.execute(new Runnable() {
+            @Override
+            public void run() {
+
+                //background task
+                LTElist = ltedb.getLTEDao().getAllLte();
+
+
+                //on finish task
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        StringBuilder sb = new StringBuilder();
+                        for(LTE lte : LTElist){
+                            sb.append(lte.getLatitudine() + " : " + lte.getLongitudine() + " : " + lte.getId() + " : " + lte.getDate());
+                            sb.append("\n");
+                        }
+
+                        String finalData = sb.toString();
+                        Toast.makeText(context, ""+finalData, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        });
+
+    }
 }
 
