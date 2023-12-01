@@ -1,6 +1,7 @@
 package com.example.labappmobili;
 
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -58,6 +59,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public static final int PERMISSION_NOTIFICATION_CODE = 731;
     public static final String NOTIFICATION_PERMISSION = android.Manifest.permission.POST_NOTIFICATIONS;
+
+    public static final int PERMISSION_BACKGROUND_CODE = 6;
+    public static final String BACKGROUND_PERMISSION = Manifest.permission.ACCESS_BACKGROUND_LOCATION;
 
     private WifiSignalManager wifiSignalManager;
     private NoiseSignalManager noiseSignalManager;
@@ -229,8 +233,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         /*** Richiedi l'autorizzazione per la posizione ***/
-        findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionNotification());
-        //findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionLocation());
+        //findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionNotification());
+        findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionLocation());
         //requestRuntimePermissionNotification();
 
         /*** Preferenze intervallo misurazione ***/
@@ -247,18 +251,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Intent optionsIntent = new Intent(MainActivity.this, OptionsActivity.class);
             startActivity(optionsIntent);
         });
-
-
-
-        /*PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
-                NotificationWorker.class,
-                5, // Intervallo in minuti, puoi personalizzarlo
-                TimeUnit.SECONDS
-        ).build();
-
-        WorkManager workManager = WorkManager.getInstance(getApplicationContext());
-        workManager.enqueueUniquePeriodicWork("myPeriodicWorker", ExistingPeriodicWorkPolicy.REPLACE, periodicWorkRequest);
-    */
 
     }
 
@@ -465,7 +457,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 builder.show();
             } else {
                 // L'utente ha negato l'autorizzazione, richiedi di nuovo
-                Log.d("prova","REQUEST");
                 requestRuntimePermissionNotification();
             }
         } else if (requestCode == PERMISSION_LOCATION_CODE) {
@@ -601,30 +592,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStop() {
         super.onStop();
-        Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
-
-        final PeriodicWorkRequest periodicWorkRequest1 = new PeriodicWorkRequest.Builder(
-                NotificationWorker.class,
-                15,
-                TimeUnit.MINUTES)
-                .setInitialDelay(6000,TimeUnit.MILLISECONDS)
-                .setConstraints(constraints)
-                .build();
-
-        WorkManager workManager =  WorkManager.getInstance(this);
-
-        workManager.enqueue(periodicWorkRequest1);
-
-        workManager.getWorkInfoByIdLiveData(periodicWorkRequest1.getId())
-                .observe(this, new Observer<WorkInfo>() {
-                    @Override
-                    public void onChanged(@Nullable WorkInfo workInfo) {
-                        if (workInfo != null) {
-                            Log.d("periodicWorkRequest", "Status changed to : " + workInfo.getState());
-
-                        }
-                    }
-                });
+        createWorker();
     }
 
 
@@ -664,4 +632,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return interval;
     }
+
+    private void createWorker(){
+        Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
+
+        final PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
+                NotificationWorker.class,
+                15,
+                TimeUnit.MINUTES)
+                //.setInitialDelay(6000,TimeUnit.MILLISECONDS)
+                .setConstraints(constraints)
+                .build();
+
+        WorkManager workManager =  WorkManager.getInstance(this);
+
+        workManager.enqueue(periodicWorkRequest);
+
+        workManager.getWorkInfoByIdLiveData(periodicWorkRequest.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(@Nullable WorkInfo workInfo) {
+                        if (workInfo != null) {
+                            Log.d("prova", "Status changed to : " + workInfo.getState());
+
+                        }
+                    }
+                });
+    }
+
 }

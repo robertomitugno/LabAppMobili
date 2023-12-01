@@ -11,6 +11,8 @@
     <!-- permesso per accesso alla posizione -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
 
     <!-- permesso per accesso alla rete wifi -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

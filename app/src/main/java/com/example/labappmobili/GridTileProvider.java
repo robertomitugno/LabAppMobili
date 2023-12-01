@@ -1,6 +1,9 @@
 package com.example.labappmobili;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -93,7 +96,7 @@ public class GridTileProvider implements TileProvider {
                     LTE lteItem = (LTE) object; // Cast esplicito a LTE
                     TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 12, 0);
 
-                    if (actualLteTile.equals(locationTile)) {
+                    if (locationTile.equals(actualLteTile)) {
                         return false;
                     }
                 } else if (object instanceof WiFi) {
@@ -112,11 +115,13 @@ public class GridTileProvider implements TileProvider {
                     }
                 }
             }
+            return true;
         }
         return true;
     }
 
-    //TODO richiedere la media degli utlimi x valori per colorare le piastrelle all'utente
+
+
     public Bitmap drawGridTile(int x, int y, int zoom) {
 
         // Synchronize copying the bitmap to avoid a race condition in some devices.
@@ -156,7 +161,6 @@ public class GridTileProvider implements TileProvider {
                             if (actualTile.equals(tileFound)) {
                                 contatore++;
                                 cellValues.add(lteItem);
-                                Log.d("prova","contatore : " + contatore);
                             }
                         } else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
                             WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
@@ -164,7 +168,6 @@ public class GridTileProvider implements TileProvider {
                             if (actualTile.equals(tileFound)) {
                                 contatore++;
                                 cellValues.add(wifiItem);
-                                Log.d("prova","contatore : " + contatore);
                             }
                         } else if (item instanceof Noise) {
                             Noise noiseItem = (Noise) item;
@@ -172,15 +175,17 @@ public class GridTileProvider implements TileProvider {
                             if (actualTile.equals(tileFound)) {
                                 contatore++;
                                 cellValues.add(noiseItem);
-                                Log.d("prova","contatore : " + contatore);
                             }
                         }
 
                     }
 
+                    SharedPreferences preferences = context.getSharedPreferences("PrefAvg", MODE_PRIVATE);
+                    int val = preferences.getInt("averageValue", 5);
+
                     // Limita la lista agli ultimi 5 valori
-                    if (cellValues.size() > 5) {
-                        cellValues = cellValues.subList(cellValues.size() - 5, cellValues.size());
+                    if (cellValues.size() > val) {
+                        cellValues = cellValues.subList(cellValues.size() - val, cellValues.size());
                         color = calculateAverage(cellValues);
                     } else if(!cellValues.isEmpty()){
                         color = calculateAverage(cellValues);
@@ -214,7 +219,6 @@ public class GridTileProvider implements TileProvider {
     // Metodo per calcolare la media di una lista di valori
     private int calculateAverage(List<Object> values) {
         if (values.isEmpty()) {
-            Log.d("prova", "TRASPARENT");
             return Color.TRANSPARENT; // Ritorna un valore di default se la lista è vuota
         }
 
@@ -230,8 +234,6 @@ public class GridTileProvider implements TileProvider {
             }
         }
         double average = sum / values.size();
-
-        Log.d("prova","avg : " + average);
 
         // Restituisci il colore basato sulla media
         return (int) Math.round(average);
