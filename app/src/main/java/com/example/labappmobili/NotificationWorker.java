@@ -1,5 +1,7 @@
 package com.example.labappmobili;
 
+import static com.example.labappmobili.MainActivity.stopWorker;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
@@ -16,6 +18,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -30,33 +33,42 @@ public class NotificationWorker extends Worker {
 
     private Location currentLocation = null;
 
+    Context context;
+
     public NotificationWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        this.context = context;
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
     }
 
     @NonNull
     @Override
     public Result doWork() {
-        Log.d("prova", "PeriodicWork doWork");
+        //Log.d("prova", "PeriodicWork doWork");
+        //Log.d("prova",String.valueOf(!ActivityMonitor.isAnyActivityRunning()));
+        if(!ActivityMonitor.isAnyActivityRunning()) {
+            // Check for location permissions
+            if (ActivityCompat.checkSelfPermission(super.getApplicationContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-        // Check for location permissions
-        if (ActivityCompat.checkSelfPermission(super.getApplicationContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                // Start the background location service
+                getLocation();
 
-            // Start the background location service
-            getLocation();
+                while (currentLocation == null) {
+                }
 
-            while (currentLocation == null) {
+
+                if (GridTileProvider.checkEmptyArea(currentLocation, LteSignalManager.getAllLteValue())) {
+                    sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_lte));
+                    stopWorker();
+                } else if (GridTileProvider.checkEmptyArea(currentLocation, WifiSignalManager.getAllWifiValue())) {
+                    sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_wifi));
+                    stopWorker();
+                } else if (GridTileProvider.checkEmptyArea(currentLocation, NoiseSignalManager.getAllNoiseValue())) {
+                    sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_noise));
+                    stopWorker();
+                }
+
             }
-
-            if (GridTileProvider.checkEmptyArea(currentLocation, LteSignalManager.getAllLteValue())) {
-                sendNotification("Background Task", "Sei entrato in una zona non ancora misurata con il sengale LTE. Aggiorna la tua mappa!");
-            } else if (GridTileProvider.checkEmptyArea(currentLocation, WifiSignalManager.getAllWifiValue())){
-                sendNotification("Background Task", "Sei entrato in una zona non ancora misurata con il segnale WiFi. Aggiorna la tua mappa!");
-            } else if (GridTileProvider.checkEmptyArea(currentLocation, NoiseSignalManager.getAllNoiseValue())) {
-                sendNotification("Background Task", "Sei entrato in una zona non ancora misurata con il rumore. Aggiorna la tua mappa!");
-            }
-
         }
 
         return Result.success();
@@ -100,14 +112,14 @@ public class NotificationWorker extends Worker {
             }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
-                    Log.e("prova", "FALLITO");
+                    Log.e("NotificationWorker", "Failure getting background location");
 
                 }
             });
 
         } catch (Exception e) {
             // Error while doing work..
-            Log.e("prova", "EXCEPTION WHILE GETTING LOCATION");
+            Log.e("NotificationWorker", "Exception gettin background location");
         }
 
     }

@@ -56,17 +56,6 @@ public class LteSignalManager {
     }
 
 
-    int updateLTELevel() {
-
-        //boolean boh = GridTileProvider.checkEmptyArea(currentLocation, getAllLteValue());
-        //variableText.setText("LTE : " + lteLevel + " dBm");
-
-        getLteListInBackground();
-
-        return 0;
-    }
-
-
     static List<LTE> getAllLteValue() {
         if (ltedb == null) {
             return new ArrayList<>(); // Il database non è ancora inizializzato
@@ -122,9 +111,11 @@ public class LteSignalManager {
             longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
         }
+        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllLteValue());
 
-        if(GridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time).startsWith("Attendere")){
-            return GridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time);
+        Log.d("prova","stampa : " + gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time));
+        if(gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time);
         }
 
         LTE lteMeasurement = new LTE(latitudine, longitudine, lteLevel, date.getTime());
@@ -138,7 +129,7 @@ public class LteSignalManager {
 
         //getLteListInBackground();
 
-        return "Misurazione completata";
+        return context.getResources().getString(R.string.measurement_complete);
     }
 
 

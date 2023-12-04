@@ -1,18 +1,81 @@
 <resources>
     <string name="app_name">LabAppMobili</string>
     <string name="my_app_api_key">AIzaSyCfZDSzDqILz9We8NqjIQGUV4gq3MZbjko</string>
-    <string name="wifi">WiFi:</string>
-    <string name="wifi_signal_strength_n_a">WiFi non disponibile.</string>
-    <string name="lte_level_n_a">LTE non disponibile.</string>
-    <string name="rumore_level_n_a">Rumore non disponibile.</string>
-    <string name="location_permission_denied">Location permission denied, please allow the permission</string>
+
+    <string name="variableText_default">"Select a measurement.."</string>
+
+    <!-- TOAST MESSAGE -->
+    <string name="select_measure">"Select a measurement type"</string>
+    <string name="location_not_found">"Position not available."</string>
+    <string name="permission_denied">Permission not granted. Change the settings.</string>
+    <string name="increase_zoom">"Zoom in to view the map correctly"</string>
+    <string name="permission_granted">"Permission Granted."</string>
+
+
+    <!-- PERMISSION -->
+    <string name="permission_required">"Permission Required"</string>
+    <string name="message_position">"This app requires location permission to show features."</string>
+    <string name="message_microphone">"This app requires microphone permission to detect surrounding noise."</string>
+    <string name="message_notifications">"This app requires permission for notifications."</string>
+    <string name="message_background">"This app requires permission to access location in the background to show features."</string>
+
+    <string name="cancel">"Cancel"</string>
+    <string name="setting">"Setting"</string>
+
+
+    <!-- MEASUREMENT -->
+    <string name="measurement_error">"Errore nella misurazione."</string>
+    <string name="measurement_complete">"Measurement completed."</string>
+    <string name="waiting">"Wait another "</string>
+    <string name="minutes">"minutes and "</string>
+    <string name="seconds">" seconds"</string>
+
+
+    <!-- SETTING MESSAGE-->
+    <string name="message_clear_db">"Confirm deletion of all data from database?"</string>
+    <string name="title_clear_db">"Confirm Deletion"</string>
+    <string name="confirm">"Confirm"</string>
+    <string name="messsage_background_always">"Set background location access to 'Always allow'"</string>
+
+
+    <!-- SETTING LAYOUT -->
+    <string name="option_text">"SETTINGS"</string>
+    <string name="permission_text">"Permission"</string>
+    <string name="permission_text_position">"Allow access to location"</string>
+    <string name="permission_text_lte">"Allow access to LTE network"</string>
+    <string name="permission_text_wifi">"Allow access to the Wifi network"</string>
+    <string name="permission_text_microphone">"Allow access to microphone"</string>
+    <string name="permission_text_notification">"Allow access to notifications"</string>
+
+    <string name="measurement_text">"Measurements"</string>
+    <string name="measurement_text_delay">"Select a time interval \nbetween measurements"</string>
+    <string name="measurement_text_average">"Select how many of the last values to use \nto calculate the average for each box"</string>
+
+    <string name="map_text">"Map"</string>
+    <string name="map_normal">"Normal"</string>
+    <string name="map_text_select">"Select a map type"</string>
+    <string name="background_text">"Background measurements"</string>
+    <string name="permission_text_background">"Allow access to measurements in background"</string>
+    <string name="database_text_clear">"Clear the database?"</string>
+    <string name="button_text_empty">"Clear"</string>
+
+
+    <!-- NOTIFICATION -->
+    <string name="notification_title">"Background Measurement"</string>
+    <string name="notification_empty_lte">"Sei entrato in una zona non ancora misurata con il sengale LTE. Aggiorna la tua mappa!"</string>
+    <string name="notification_empty_wifi">"Sei entrato in una zona non ancora misurata con il segnale WiFi. Aggiorna la tua mappa!"</string>
+    <string name="notification_empty_noise">"Sei entrato in una zona non ancora misurata con il rumore. Aggiorna la tua mappa!"</string>
+
+
+
+    <string name="noise_button">"NOISE"</string>
+    <string name="noise">"Noise : "</string>
+
 
     <string-array name="menu_options">
         <item name="menu_wifi">WIFI</item>
         <item name="menu_lte">LTE</item>
         <item name="menu_noise">NOISE</item>
     </string-array>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

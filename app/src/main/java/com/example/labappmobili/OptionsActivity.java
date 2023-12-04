@@ -15,6 +15,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -87,17 +88,17 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimeLocation();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_position)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -142,17 +143,17 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimeAudio();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per il microfono per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_microphone)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -164,17 +165,16 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimePermissionNotification();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
-                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            Uri uri = Uri.fromParts("package", getPackageName(), null);
-                            intent.setData(uri);
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -187,17 +187,17 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimePermissionBackground();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per l'accesso alla posizione in background per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_background)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -286,7 +286,7 @@ public class OptionsActivity extends AppCompatActivity {
 
 
         Spinner selectMapSpinner = findViewById(R.id.selectMap);
-        String[] mapOptions = {"Normal", "Satellite"};
+        String[] mapOptions = {this.getResources().getString(R.string.map_normal), "Satellite"};
 
         ArrayAdapter<String> mapAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mapOptions);
         mapAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -320,27 +320,44 @@ public class OptionsActivity extends AppCompatActivity {
 
 
     private void requestRuntimePermissionNotification() {
-        Log.d("prova","entro notifiche");
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per le notifiche.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_notifications)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
-                    .setPositiveButton("Ok", (dialog, which) -> {
-                        ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION},
-                                PERMISSION_NOTIFICATION_CODE);
+                    .setPositiveButton(R.string.setting, (dialog, which) -> {
+                        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                        startActivity(intent);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
                         dialog.dismiss();
                     });
 
             builder.show();
         } else {
-            // Richiedi l'autorizzazione
-            Log.d("prova","entro notifiche ELSE");
-            ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
+
+            if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_DENIED) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                                intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                                startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                            dialog.dismiss();
+                        });
+
+                builder.show();
+            }
+
+            //ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
         }
     }
 
@@ -352,15 +369,15 @@ public class OptionsActivity extends AppCompatActivity {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, BACKGROUND_PERMISSION)) {
                 // Spiega l'importanza dell'autorizzazione all'utente
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per l'accesso alla posizione in background.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_background)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
                         .setPositiveButton("Ok", (dialog, which) -> {
                             ActivityCompat.requestPermissions(this, new String[]{BACKGROUND_PERMISSION},
                                     PERMISSION_BACKGROUND_CODE);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> {
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
                             dialog.dismiss();
                         });
 
@@ -380,15 +397,15 @@ public class OptionsActivity extends AppCompatActivity {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_microphone)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(this, new String[]{RECORD_AUDIO_PERMISSION},
                                 PERMISSION_AUDIO_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss())
                     );
 
             builder.show();
@@ -403,17 +420,17 @@ public class OptionsActivity extends AppCompatActivity {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_position)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
+                    .setPositiveButton(R.string.setting, (dialog, which) -> {
                         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                         Uri uri = Uri.fromParts("package", getPackageName(), null);
                         intent.setData(uri);
                         startActivity(intent);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
             builder.show();
 
@@ -460,7 +477,7 @@ public class OptionsActivity extends AppCompatActivity {
     }
 
     private void checkSwitchBackground() {
-        TextView textBackground = findViewById(R.id.textBackground);
+        TextView textBackground = findViewById(R.id.textSwitchBackground);
         if(ActivityCompat.checkSelfPermission(this, BACKGROUND_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchBackground.setChecked(true);
             textBackground.setTextColor(getResources().getColor(R.color.purple_200));
@@ -495,10 +512,10 @@ public class OptionsActivity extends AppCompatActivity {
     private void clearAllDatabases() {
         // Creare un AlertDialog per chiedere conferma
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Confermare l'eliminazione di tutti i dati dal database?")
-                .setTitle("Conferma Eliminazione")
+        builder.setMessage(R.string.message_clear_db)
+                .setTitle(R.string.title_clear_db)
                 .setCancelable(false)
-                .setPositiveButton("Conferma", (dialog, which) -> {
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
                     // Conferma selezionata, procedere con l'eliminazione
                     executorService.execute(() -> {
                         LTEDB ltedb = Room.databaseBuilder(OptionsActivity.this, LTEDB.class, "LteDB").build();
@@ -515,7 +532,7 @@ public class OptionsActivity extends AppCompatActivity {
                     });
                     dialog.dismiss();
                 })
-                .setNegativeButton("Annulla", (dialog, which) -> dialog.dismiss());
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
         builder.show();
     }
@@ -535,15 +552,15 @@ public class OptionsActivity extends AppCompatActivity {
         } else if(requestCode == PERMISSION_BACKGROUND_CODE) {
             if (ActivityCompat.checkSelfPermission(this, BACKGROUND_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Impostare l'accesso alla posizione in background a 'Consenti sempre'")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.messsage_background_always)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
                         .setPositiveButton("Ok", (dialog, which) -> {
                             ActivityCompat.requestPermissions(this, new String[]{BACKGROUND_PERMISSION},
                                     PERMISSION_BACKGROUND_CODE);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> {
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
                             dialog.dismiss();
                         });
 

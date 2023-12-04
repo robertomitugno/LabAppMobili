@@ -122,8 +122,10 @@ public class WifiSignalManager {
 
         }
 
-        if(GridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time).startsWith("Attendere")){
-            return GridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time);
+        GridTileProvider gridTileProvider = new GridTileProvider();
+
+        if(gridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time);
         }
 
         WiFi wifiMeasurement = new WiFi(latitudine, longitudine, signalStrength, date.getTime());
@@ -139,7 +141,7 @@ public class WifiSignalManager {
 
         //getWifiListInBackground();
 
-        return "Misurazione completata";
+        return context.getResources().getString(R.string.measurement_complete);
     }
 
 

@@ -147,9 +147,10 @@ public class NoiseSignalManager {
 
         }
 
+        GridTileProvider gridTileProvider = new GridTileProvider();
 
-        if (GridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time).startsWith("Attendere")) {
-            return GridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time);
+        if (gridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time);
         }
 
         Noise noiseMeasurement = new Noise(latitudine, longitudine, noiseLevel, date.getTime());
@@ -164,7 +165,7 @@ public class NoiseSignalManager {
         });
         //getNoiseListInBackground();
 
-        return "Misurazione completata";
+        return context.getResources().getString(R.string.measurement_complete);
     }
 
 

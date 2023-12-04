@@ -36,7 +36,7 @@ public class GridTileProvider implements TileProvider {
     private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
     private static final int gridSize = 6;
     private float scaleFactor;
-    private final List<?> lista;
+    private List<?> lista;
     private int color = 0;
     private boolean startMeasuramentBackground = false;
     Location location;
@@ -46,13 +46,6 @@ public class GridTileProvider implements TileProvider {
     static int zoom = 0;
 
     // Per inizio misurazione
-    public GridTileProvider(Context context, Location location, List<?> lista) {
-        this.context = context;
-        this.location = location;
-        this.startMeasuramentBackground = true;
-        this.lista = lista;
-    }
-
     public GridTileProvider(Context context, List<?> lista) {
         this.context = context;
         scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
@@ -60,6 +53,8 @@ public class GridTileProvider implements TileProvider {
                 (int) (TILE_SIZE_DP * scaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
         this.lista = lista;
     }
+
+    public GridTileProvider() {    }
 
     @Override
     public Tile getTile(int x, int y, int zoom) {
@@ -87,21 +82,21 @@ public class GridTileProvider implements TileProvider {
 
             double convertedLat = inMetersLatCoordinate(location.getLatitude());
             double convertedLng = inMetersLngCoordinate(location.getLongitude());
-            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 12, 0);
+            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 10, 0);
 
 
             for (Object object : lista) {
 
                 if (object instanceof LTE) {
                     LTE lteItem = (LTE) object; // Cast esplicito a LTE
-                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 12, 0);
+                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 10, 0);
 
                     if (locationTile.equals(actualLteTile)) {
                         return false;
                     }
                 } else if (object instanceof WiFi) {
                     WiFi wifiItem = (WiFi) object;
-                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 12, 0);
+                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 10, 0);
 
                     if (actualWifiTile.equals(locationTile)) {
                         return false;
@@ -240,7 +235,7 @@ public class GridTileProvider implements TileProvider {
     }
 
 
-    public static String checkTimeArea(Location currentLocation, List<?> lista ,long time){
+    public String checkTimeArea(Location currentLocation, List<?> lista , long time){
 
         Date date = new Date();
 
@@ -281,17 +276,16 @@ public class GridTileProvider implements TileProvider {
             }
         }
 
-        return "Errore nella misurazione.";
+        return String.valueOf(R.string.measurement_error);
     }
 
-    private static String formatRemainingTime(long thresholdTime, long timeDifference) {
+    private String formatRemainingTime(long thresholdTime, long timeDifference) {
         long remainingMinutes = TimeUnit.MILLISECONDS.toMinutes(thresholdTime - timeDifference);
         long remainingSeconds = TimeUnit.MILLISECONDS.toSeconds(thresholdTime - timeDifference) % 60;
-
         if (remainingMinutes > 0) {
-            return "Attendere ancora " + remainingMinutes + " minuti e " + remainingSeconds + " secondi";
+            return context.getResources().getString(R.string.waiting) + remainingMinutes + R.string.minutes + remainingSeconds + context.getResources().getString(R.string.seconds);
         } else {
-            return "Attendere ancora " + remainingSeconds + " secondi";
+            return context.getResources().getString(R.string.waiting) + remainingSeconds + context.getResources().getString(R.string.seconds);
         }
     }
 

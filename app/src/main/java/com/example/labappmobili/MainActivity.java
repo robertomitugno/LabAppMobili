@@ -42,8 +42,6 @@ import java.util.concurrent.TimeUnit;
 
 import androidx.lifecycle.Observer;
 import androidx.work.Constraints;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
@@ -57,10 +55,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static final int PERMISSION_AUDIO_CODE = 2;
     public static final String RECORD_AUDIO_PERMISSION = android.Manifest.permission.RECORD_AUDIO;
 
-    public static final int PERMISSION_NOTIFICATION_CODE = 731;
+    public static final int PERMISSION_NOTIFICATION_CODE = 3;
     public static final String NOTIFICATION_PERMISSION = android.Manifest.permission.POST_NOTIFICATIONS;
 
-    public static final int PERMISSION_BACKGROUND_CODE = 6;
+    public static final int PERMISSION_BACKGROUND_CODE = 4;
     public static final String BACKGROUND_PERMISSION = Manifest.permission.ACCESS_BACKGROUND_LOCATION;
 
     private WifiSignalManager wifiSignalManager;
@@ -74,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private TextView variableText;
 
-    CheckBox lteCheckBox, wifiCheckBox, rumoreCheckBox;
+    CheckBox lteCheckBox, wifiCheckBox, noiseCheckBox;
     static boolean isWifiEnabled = true;
     static boolean isLteEnabled = true;
 
@@ -101,9 +99,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mapSearchView = findViewById(R.id.mapSearch);
 
-
         variableText = findViewById(R.id.variableText);
 
+        createWorker();
 
         /*** SearchBox ***/
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -141,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Collega le variabili ai CheckBox nell'XML
         lteCheckBox = findViewById(R.id.lteCheckBox);
         wifiCheckBox = findViewById(R.id.wifiCheckBox);
-        rumoreCheckBox = findViewById(R.id.rumoreCheckBox);
+        noiseCheckBox = findViewById(R.id.noiseCheckBox);
 
 
         // Aggiungi un listener per gestire gli eventi di selezione
@@ -153,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 if (checkBoxId == R.id.lteCheckBox) {
                     wifiCheckBox.setChecked(false);
-                    rumoreCheckBox.setChecked(false);
+                    noiseCheckBox.setChecked(false);
                     // Azioni per la selezione di LTE
                     if (isLteEnabled) {
                         handler.removeCallbacks(updateWifiText);
@@ -169,14 +167,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         handler.post(updateLteText);
 
                     } else {
-                        Toast.makeText(this, "Permesso non concesso. Modificare le impostazioni.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, R.string.permission_denied , Toast.LENGTH_LONG).show();
                         buttonView.setChecked(false);
                     }
                 }
 
                 else if (checkBoxId == R.id.wifiCheckBox) {
                     lteCheckBox.setChecked(false);
-                    rumoreCheckBox.setChecked(false);
+                    noiseCheckBox.setChecked(false);
                     // Azioni per la selezione di WiFi
                     if (isWifiEnabled) {
                         handler.removeCallbacks(updateLteText);
@@ -191,12 +189,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         handler.post(updateWifiText);
                     } else {
-                        Toast.makeText(this, "Permesso non concesso. Modificare le impostazioni.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_LONG).show();
                         buttonView.setChecked(false);
                     }
                 }
 
-                else if (checkBoxId == R.id.rumoreCheckBox) {
+                else if (checkBoxId == R.id.noiseCheckBox) {
                     lteCheckBox.setChecked(false);
                     wifiCheckBox.setChecked(false);
                     // Azioni per la selezione di Rumore
@@ -214,7 +212,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 handler.removeCallbacks(updateNoiseText);
 
 
-                variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
+                variableText.setText(R.string.variableText_default);  // Pulisci il testo
                 }
 
         };
@@ -222,7 +220,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Aggiungi il listener ai CheckBox
         lteCheckBox.setOnCheckedChangeListener(checkBoxListener);
         wifiCheckBox.setOnCheckedChangeListener(checkBoxListener);
-        rumoreCheckBox.setOnCheckedChangeListener(checkBoxListener);
+        noiseCheckBox.setOnCheckedChangeListener(checkBoxListener);
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -262,10 +260,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             updateLteLevel();
         } else if (wifiCheckBox.isChecked()) {
             updateWifiLevel();
-        } else if (rumoreCheckBox.isChecked()) {
+        } else if (noiseCheckBox.isChecked()) {
             updateNoiseLevel();
         } else {
-            showToast("Seleziona un tipo di misurazione");
+            showToast(this.getResources().getString(R.string.select_measure));
         }
     }
 
@@ -276,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             showToast(LteSignalManager.insertLTEMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
             lteSignalManager.showLteMap();
         } else {
-            showToast("Posizione non disponibile. ");
+            showToast(this.getResources().getString(R.string.location_not_found));
         }
     }
 
@@ -287,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             showToast(WifiSignalManager.insertWifiMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
             WifiSignalManager.showWifiMap();
         } else {
-            showToast("Posizione non disponibile.");
+            showToast(this.getResources().getString(R.string.location_not_found));
         }
     }
 
@@ -307,7 +305,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             handler.post(updateNoiseText);
 
         } else {
-            showToast("Posizione non disponibile.");
+            showToast(this.getResources().getString(R.string.location_not_found));
         }
     }
 
@@ -328,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void run() {
             // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
-            variableText.setText("Wifi : " + WifiSignalManager.getWifiLevel() + " Mb/s");
+            variableText.setText("WiFi : " + WifiSignalManager.getWifiLevel() + " Mb/s");
             // Esegui questo Runnable dopo 1 secondo
             handler.postDelayed(this, 1000);
         }
@@ -352,15 +350,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_position)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{FINE_LOCATION_PERMISSION},
                                 PERMISSION_LOCATION_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
                         dialog.dismiss();
                     });
 
@@ -375,7 +373,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void requestRuntimePermissionAudio() {
         if (ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
             handler.removeCallbacks(updateLteText);
             handler.removeCallbacks(updateWifiText);
 
@@ -389,15 +387,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_microphone)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{RECORD_AUDIO_PERMISSION},
                                 PERMISSION_AUDIO_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss())
                     );
 
             builder.show();
@@ -409,26 +407,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void requestRuntimePermissionNotification() {
         if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per le notifiche.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_notifications)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{NOTIFICATION_PERMISSION},
                                 PERMISSION_NOTIFICATION_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
                         dialog.dismiss();
                     });
 
             builder.show();
         } else {
             // Richiedi l'autorizzazione
-            Log.d("prova","entro notifiche ELSE");
             ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
             //requestPermissions(new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
         }
@@ -442,17 +439,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (!ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
                 // L'utente ha negato l'autorizzazione in modo permanente, mostra un messaggio
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per le notifiche.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             } else {
@@ -466,17 +463,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
                 // L'utente ha negato l'autorizzazione in modo permanente, mostra un messaggio
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_position)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             } else {
@@ -487,7 +484,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         /*** Richiesta autorizzazione per l'audio ***/
         else if (requestCode == PERMISSION_AUDIO_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
 
                 handler.removeCallbacks(updateLteText);
                 handler.removeCallbacks(updateWifiText);
@@ -504,10 +501,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_microphone)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
@@ -515,7 +512,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss()));
+                        .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss()));
 
                 builder.show();
             } else {
@@ -531,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             if (GridManager.getInstance().isVisible() && currentZoom < 4) {
                 // Mostra un Toast per aumentare lo zoom
-                showToast("Aumentare lo zoom per visualizzare la griglia correttamente");
+                showToast(this.getResources().getString(R.string.increase_zoom));
             }
         }
     }
@@ -592,7 +589,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStop() {
         super.onStop();
-        createWorker();
     }
 
 
@@ -609,7 +605,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     onMapReady(myMap);
 
                 } else {
-                    Toast.makeText(MainActivity.this, "Posizione non disponibile.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.location_not_found, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -634,6 +630,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void createWorker(){
+
         Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
 
         final PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
@@ -653,11 +650,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public void onChanged(@Nullable WorkInfo workInfo) {
                         if (workInfo != null) {
-                            Log.d("prova", "Status changed to : " + workInfo.getState());
-
+                            Log.d("Worker", "Status changed to : " + workInfo.getState());
                         }
                     }
                 });
+    }
+
+
+    public static void stopWorker() {
+        WorkManager.getInstance().cancelAllWork();
     }
 
 }
