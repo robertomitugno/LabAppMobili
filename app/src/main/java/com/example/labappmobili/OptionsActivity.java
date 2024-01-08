@@ -10,15 +10,15 @@ import static com.example.labappmobili.MainActivity.PERMISSION_LOCATION_CODE;
 import static com.example.labappmobili.MainActivity.PERMISSION_NOTIFICATION_CODE;
 import static com.example.labappmobili.MainActivity.RECORD_AUDIO_PERMISSION;
 import static com.example.labappmobili.MainActivity.PERMISSION_AUDIO_CODE;
+import static com.example.labappmobili.MainActivity.isLteEnabled;
+import static com.example.labappmobili.MainActivity.isWifiEnabled;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -27,7 +27,6 @@ import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -48,18 +47,19 @@ import java.util.concurrent.Executors;
 
 public class OptionsActivity extends AppCompatActivity {
 
-    private Switch switchLocation, switchLte, switchWifi, switchNoise, switchNotification, switchBackground;
+    private Switch switchLocation, switchLte, switchWifi, switchNoise, switchNotification, switchBackground, switchBackgroundMeasure;
     private ImageButton imageButton;
     private Button buttonClear;
 
+    boolean isBackgroundMeasureEnabled = false;
+
     ExecutorService executorService = Executors.newSingleThreadExecutor();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.options_layout);
-
-        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
 
         // Inizializza gli elementi UI
         switchLocation = findViewById(R.id.switchLocation);
@@ -73,6 +73,9 @@ public class OptionsActivity extends AppCompatActivity {
         switchWifi = findViewById(R.id.switchWifi);
         buttonClear = findViewById(R.id.buttonClear);
         imageButton = findViewById(R.id.imageButton);
+        switchBackgroundMeasure = findViewById(R.id.switchBackgroundMeasure);
+
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
 
         checkSwitchLocation();
         checkSwitchAudio();
@@ -80,7 +83,7 @@ public class OptionsActivity extends AppCompatActivity {
         checkSwitchWifi();
         checkSwitchLte();
         checkSwitchBackground();
-
+        checkSwitchBackgroundMeasure();
 
         // Gestisci il cambio di stato degli interruttori
         switchLocation.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -108,15 +111,15 @@ public class OptionsActivity extends AppCompatActivity {
         switchLte.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 // Abilita l'accesso alla rete WiFi
-                MainActivity.isLteEnabled = true;
+                isLteEnabled = true;
             } else {
                 // Disabilita l'accesso alla rete WiFi
-                MainActivity.isLteEnabled = false;
+                isLteEnabled = false;
             }
 
             // Salva lo stato nello SharedPreferences
             SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean("isLteEnabled", MainActivity.isLteEnabled);
+            editor.putBoolean("isLteEnabled", isLteEnabled);
             editor.apply();
             checkSwitchLte();
         });
@@ -315,6 +318,25 @@ public class OptionsActivity extends AppCompatActivity {
                 // Do nothing here
             }
         });
+
+
+
+        switchBackgroundMeasure.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                // Abilita l'accesso alla rete WiFi
+                isBackgroundMeasureEnabled = true;
+            } else {
+                // Disabilita l'accesso alla rete WiFi
+                isBackgroundMeasureEnabled = false;
+            }
+
+            // Salva lo stato nello SharedPreferences
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("isBackgroundMeasureEnabled", isBackgroundMeasureEnabled);
+            editor.apply();
+            checkSwitchBackgroundMeasure();
+        });
+
     }
 
 
@@ -487,9 +509,24 @@ public class OptionsActivity extends AppCompatActivity {
         }
     }
 
+    private void checkSwitchBackgroundMeasure() {
+        TextView textBackground = findViewById(R.id.textBackgroundMeasure);
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isBackgroundMeasureEnabled = preferences.getBoolean("isBackgroundMeasureEnabled",false);
+        if(isBackgroundMeasureEnabled) {
+            switchBackgroundMeasure.setChecked(true);
+            textBackground.setTextColor(getResources().getColor(R.color.purple_200));
+        }else {
+            switchBackgroundMeasure.setChecked(false);
+            textBackground.setTextColor(getResources().getColor(R.color.black));
+        }
+    }
+
     private void checkSwitchWifi() {
         TextView textWifi = findViewById(R.id.textWifi);
-        if(MainActivity.isWifiEnabled) {
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isWifiEnabled = preferences.getBoolean("isWifiEnabled",true);
+        if(isWifiEnabled) {
             switchWifi.setChecked(true);
             textWifi.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
@@ -500,7 +537,9 @@ public class OptionsActivity extends AppCompatActivity {
 
     private void checkSwitchLte() {
         TextView textLte = findViewById(R.id.textLte);
-        if(MainActivity.isLteEnabled) {
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isLteEnabled = preferences.getBoolean("isLteEnabled",true);
+        if(isLteEnabled) {
             switchLte.setChecked(true);
             textLte.setTextColor(getResources().getColor(R.color.purple_200));
         }else {

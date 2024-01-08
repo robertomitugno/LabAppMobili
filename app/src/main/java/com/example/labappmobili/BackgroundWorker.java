@@ -1,5 +1,6 @@
 package com.example.labappmobili;
 
+import static com.example.labappmobili.MainActivity.getIntervalInMillis;
 import static com.example.labappmobili.MainActivity.stopWorker;
 
 import android.Manifest;
@@ -9,16 +10,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationProvider;
-import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -28,14 +27,16 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
-public class NotificationWorker extends Worker {
+public class BackgroundWorker extends Worker {
     private FusedLocationProviderClient fusedLocationClient;
 
     private Location currentLocation = null;
 
     Context context;
 
-    public NotificationWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+    public static final String FINE_LOCATION_PERMISSION = android.Manifest.permission.ACCESS_FINE_LOCATION;
+
+    public BackgroundWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         this.context = context;
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
@@ -44,8 +45,11 @@ public class NotificationWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        //Log.d("prova", "PeriodicWork doWork");
-        //Log.d("prova",String.valueOf(!ActivityMonitor.isAnyActivityRunning()));
+
+        SharedPreferences preferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+        String measurementInterval = preferences.getString("measurementInterval", "5s");
+        boolean isBackgroundMeasureEnabled = preferences.getBoolean("isBackgroundMeasureEnabled", false);
+
         if(!ActivityMonitor.isAnyActivityRunning()) {
             // Check for location permissions
             if (ActivityCompat.checkSelfPermission(super.getApplicationContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -56,17 +60,38 @@ public class NotificationWorker extends Worker {
                 while (currentLocation == null) {
                 }
 
-
-                if (GridTileProvider.checkEmptyArea(currentLocation, LteSignalManager.getAllLteValue())) {
+                if (GridTileProvider.checkEmptyArea(currentLocation, new LteSignalManager(context).getAllLteValue())) {
                     sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_lte));
                     stopWorker();
-                } else if (GridTileProvider.checkEmptyArea(currentLocation, WifiSignalManager.getAllWifiValue())) {
+                } else if (GridTileProvider.checkEmptyArea(currentLocation, new WifiSignalManager(context).getAllWifiValue())) {
                     sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_wifi));
                     stopWorker();
-                } else if (GridTileProvider.checkEmptyArea(currentLocation, NoiseSignalManager.getAllNoiseValue())) {
+                } else if (GridTileProvider.checkEmptyArea(currentLocation, new NoiseSignalManager(context).getAllNoiseValue())) {
                     sendNotification(context.getResources().getString(R.string.notification_title), context.getResources().getString(R.string.notification_empty_noise));
                     stopWorker();
                 }
+
+            }
+        } else{
+            if (ActivityCompat.checkSelfPermission(super.getApplicationContext(), FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+
+                // Start the background location service
+                getLocation();
+
+                while (currentLocation == null) {  }
+                if (isBackgroundMeasureEnabled) {
+
+                    if (GridTileProvider.checkEmptyArea(currentLocation, new LteSignalManager(context).getAllLteValue())) {
+                        LteSignalManager.insertLTEMeasurement(currentLocation, getIntervalInMillis(measurementInterval));
+                    }
+                    if (GridTileProvider.checkEmptyArea(currentLocation, new WifiSignalManager(context).getAllWifiValue())) {
+                        WifiSignalManager.insertWifiMeasurement(currentLocation, getIntervalInMillis(measurementInterval));
+                    }
+                    if (GridTileProvider.checkEmptyArea(currentLocation, new NoiseSignalManager(context).getAllNoiseValue())) {
+                        NoiseSignalManager.insertNoiseMeasurement(currentLocation, getIntervalInMillis(measurementInterval));
+                    }
+                }
+
 
             }
         }

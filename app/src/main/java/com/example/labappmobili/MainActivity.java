@@ -82,13 +82,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final Handler handler = new Handler();
 
     // Dichiarazione della tua variabile per l'intervallo di tempo
-    private String measurementInterval = "5s";  // Default a 5 secondi
+    static String measurementInterval = "5s";  // Default a 5 secondi
 
     float currentZoom;
-
-    // Dichiarazione di lteSignalManager
-    private LteSignalManager lteSignalManager;
-
 
 
     @Override
@@ -96,12 +92,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         mapSearchView = findViewById(R.id.mapSearch);
-
         variableText = findViewById(R.id.variableText);
 
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+
         createWorker();
+
 
         /*** SearchBox ***/
         mapSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -153,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     wifiCheckBox.setChecked(false);
                     noiseCheckBox.setChecked(false);
                     // Azioni per la selezione di LTE
+                    isLteEnabled = preferences.getBoolean("isLteEnabled", true);
                     if (isLteEnabled) {
                         handler.removeCallbacks(updateWifiText);
                         handler.removeCallbacks(updateNoiseText);
@@ -176,6 +174,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     lteCheckBox.setChecked(false);
                     noiseCheckBox.setChecked(false);
                     // Azioni per la selezione di WiFi
+                    isWifiEnabled = preferences.getBoolean("isWifiEnabled", true);
                     if (isWifiEnabled) {
                         handler.removeCallbacks(updateLteText);
                         handler.removeCallbacks(updateNoiseText);
@@ -236,7 +235,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //requestRuntimePermissionNotification();
 
         /*** Preferenze intervallo misurazione ***/
-        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         this.measurementInterval = preferences.getString("measurementInterval", "5s");
 
         startMeasure = findViewById(R.id.startMeasure);
@@ -545,6 +543,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         String selectedMapType = preferencesMap.getString("selectedMapType", "Normal");
         changeMapType(selectedMapType);
 
+        // Aggiungi un listener per ottenere il livello di zoom
+        /*myMap.setOnMapClickListener(latLng -> {
+            float currentZoom = myMap.getCameraPosition().zoom;
+            showToast("Current Zoom Level: " + currentZoom);
+        });*/
+
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
@@ -616,7 +620,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     // Metodo per ottenere l'intervallo in millisecondi
-    private long getIntervalInMillis(String time) {
+    static long getIntervalInMillis(String time) {
         long interval = 5000;  // Default a 5 secondi
 
         // Conversione dell'intervallo da stringa a millisecondi
@@ -634,7 +638,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
 
         final PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
-                NotificationWorker.class,
+                BackgroundWorker.class,
                 15,
                 TimeUnit.MINUTES)
                 //.setInitialDelay(6000,TimeUnit.MILLISECONDS)

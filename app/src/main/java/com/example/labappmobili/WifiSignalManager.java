@@ -4,29 +4,18 @@ import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
 import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Location;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
-import android.os.Looper;
-import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.room.Room;
 
-import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDB;
-import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDB;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDao;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.model.TileOverlay;
-import com.google.android.gms.maps.model.TileOverlayOptions;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -43,9 +32,10 @@ public class WifiSignalManager {
 
     static GridTileProvider gridTileProvider;
 
-    static List<WiFi> WifiList;
-
-
+    public WifiSignalManager(Context context) {
+        this.context = context;
+        initializeRoomDatabase();
+    }
 
     public WifiSignalManager(Context context, GoogleMap map) {
         this.context = context;
@@ -110,27 +100,21 @@ public class WifiSignalManager {
 
         Date date = new Date();
 
-        double latitudine = 0;
-        double longitudine = 0;
-
         int signalStrength = getWifiLevel();
 
+        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
-        if(currentLocation != null){
-            latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-            longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
-        }
+        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllWifiValue());
 
-        GridTileProvider gridTileProvider = new GridTileProvider();
-
-        if(gridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
-            return gridTileProvider.checkTimeArea(currentLocation, getAllWifiValue(), time);
+        if(gridTileProvider.checkTimeArea(currentLocation, time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, time);
         }
 
         WiFi wifiMeasurement = new WiFi(latitudine, longitudine, signalStrength, date.getTime());
 
-        Log.d("Misurazione","Inserimento rumore : " + latitudine + " : " + longitudine + " : " + signalStrength);
+        Log.d("Misurazione","Inserimento wifi : " + latitudine + " : " + longitudine + " : " + signalStrength);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {

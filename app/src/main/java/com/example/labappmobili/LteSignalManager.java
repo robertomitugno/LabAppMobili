@@ -39,7 +39,10 @@ public class LteSignalManager {
 
     static List<LTE> LTElist;
 
-
+    public LteSignalManager(Context context) {
+        this.context = context;
+        initializeRoomDatabase();
+    }
     public LteSignalManager(Context context, GoogleMap map) {
         this.context = context;
         this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
@@ -57,6 +60,7 @@ public class LteSignalManager {
 
 
     static List<LTE> getAllLteValue() {
+
         if (ltedb == null) {
             return new ArrayList<>(); // Il database non è ancora inizializzato
         }
@@ -102,23 +106,20 @@ public class LteSignalManager {
 
         Date date = new Date();
 
-        double latitudine = 0;
-        double longitudine = 0;
         int lteLevel = getLTELevel();
 
-        if(currentLocation != null){
-            latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-            longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
-        }
         GridTileProvider gridTileProvider = new GridTileProvider(context, getAllLteValue());
 
-        Log.d("prova","stampa : " + gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time));
-        if(gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
-            return gridTileProvider.checkTimeArea(currentLocation, getAllLteValue(), time);
+        if(gridTileProvider.checkTimeArea(currentLocation, time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, time);
         }
 
         LTE lteMeasurement = new LTE(latitudine, longitudine, lteLevel, date.getTime());
+
+        Log.d("Misurazione","Inserimento lte : " + latitudine + " : " + longitudine + " : " + lteLevel);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
@@ -155,7 +156,6 @@ public class LteSignalManager {
     public static void getLteListInBackground(){
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-
         Handler handler = new Handler(Looper.getMainLooper());
 
         executorService.execute(new Runnable() {

@@ -14,7 +14,7 @@
 
     <!-- PERMISSION -->
     <string name="permission_required">"Permission Required"</string>
-    <string name="message_position">"This app requires location permission to show features."</string>
+    <string name="message_position">"This app requires location permission to show notifications."</string>
     <string name="message_microphone">"This app requires microphone permission to detect surrounding noise."</string>
     <string name="message_notifications">"This app requires permission for notifications."</string>
     <string name="message_background">"This app requires permission to access location in the background to show features."</string>
@@ -27,7 +27,7 @@
     <string name="measurement_error">"Errore nella misurazione."</string>
     <string name="measurement_complete">"Measurement completed."</string>
     <string name="waiting">"Wait another "</string>
-    <string name="minutes">"minutes and "</string>
+    <string name="minutes">" minutes and "</string>
     <string name="seconds">" seconds"</string>
 
 
@@ -50,12 +50,14 @@
     <string name="measurement_text">"Measurements"</string>
     <string name="measurement_text_delay">"Select a time interval \nbetween measurements"</string>
     <string name="measurement_text_average">"Select how many of the last values to use \nto calculate the average for each box"</string>
+    <string name="backgroundMeasure_text">"Allow access to get background measure"</string>
+
 
     <string name="map_text">"Map"</string>
     <string name="map_normal">"Normal"</string>
     <string name="map_text_select">"Select a map type"</string>
     <string name="background_text">"Background measurements"</string>
-    <string name="permission_text_background">"Allow access to measurements in background"</string>
+    <string name="permission_text_background">"Allow access to location in background"</string>
     <string name="database_text_clear">"Clear the database?"</string>
     <string name="button_text_empty">"Clear"</string>
 

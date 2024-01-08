@@ -10,10 +10,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.location.Location;
-import android.util.Log;
 
 import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDao_Impl;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.google.android.gms.maps.model.Tile;
@@ -37,9 +35,6 @@ public class GridTileProvider implements TileProvider {
     private static final int gridSize = 6;
     private float scaleFactor;
     private List<?> lista;
-    private int color = 0;
-    private boolean startMeasuramentBackground = false;
-    Location location;
 
     Context context;
 
@@ -54,18 +49,17 @@ public class GridTileProvider implements TileProvider {
         this.lista = lista;
     }
 
-    public GridTileProvider() {    }
 
     @Override
     public Tile getTile(int x, int y, int zoom) {
-        Bitmap coordTile = null;
-            coordTile = drawGridTile(x, y, zoom);
+        Bitmap coordTile;
+        coordTile = drawGridTile(x, y, zoom);
+
+        this.zoom = zoom;
 
         if (coordTile != null) {
             return new Tile((int) (TILE_SIZE_DP), (int) (TILE_SIZE_DP), toByteArray(coordTile));
         }
-
-        this.zoom = zoom;
 
         return NO_TILE;
     }
@@ -86,11 +80,10 @@ public class GridTileProvider implements TileProvider {
 
 
             for (Object object : lista) {
-
                 if (object instanceof LTE) {
+
                     LTE lteItem = (LTE) object; // Cast esplicito a LTE
                     TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 10, 0);
-
                     if (locationTile.equals(actualLteTile)) {
                         return false;
                     }
@@ -103,14 +96,14 @@ public class GridTileProvider implements TileProvider {
                     }
                 } else if (object instanceof Noise) {
                     Noise noiseItem = (Noise) object;
-                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 12, 0);
+                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 10, 0);
 
                     if (actualNoiseTile.equals(locationTile)) {
                         return false;
                     }
                 }
             }
-            return true;
+
         }
         return true;
     }
@@ -119,7 +112,6 @@ public class GridTileProvider implements TileProvider {
 
     public Bitmap drawGridTile(int x, int y, int zoom) {
 
-        // Synchronize copying the bitmap to avoid a race condition in some devices.
         Bitmap copy;
         synchronized (borderTile) {
             copy = borderTile.copy(Bitmap.Config.ARGB_8888, true);
@@ -139,7 +131,6 @@ public class GridTileProvider implements TileProvider {
             for (int row = 0; row < gridSize; row++) {
                 for (int col = 0; col < gridSize; col++) {
 
-                    int contatore = 0;
                     int color = Color.TRANSPARENT;
                     int xSubCell = x * gridSize + col;
                     int ySubCell = y * gridSize + row;
@@ -154,21 +145,18 @@ public class GridTileProvider implements TileProvider {
                             LTE lteItem = (LTE) item; // Cast esplicito a LTE
                             TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                contatore++;
                                 cellValues.add(lteItem);
                             }
                         } else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
                             WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
                             TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                contatore++;
                                 cellValues.add(wifiItem);
                             }
                         } else if (item instanceof Noise) {
                             Noise noiseItem = (Noise) item;
                             TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
-                                contatore++;
                                 cellValues.add(noiseItem);
                             }
                         }
@@ -235,7 +223,7 @@ public class GridTileProvider implements TileProvider {
     }
 
 
-    public String checkTimeArea(Location currentLocation, List<?> lista , long time){
+    public String checkTimeArea(Location currentLocation, long time){
 
         Date date = new Date();
 
@@ -256,8 +244,10 @@ public class GridTileProvider implements TileProvider {
             }
 
             else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
+
                 WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
                 TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+
                 if (myTile.equals(tileFound)) {
                     if((date.getTime() - wifiItem.getDate()) < time){
                         return formatRemainingTime(time, date.getTime() - ((WiFi) item).getDate());
@@ -280,13 +270,17 @@ public class GridTileProvider implements TileProvider {
     }
 
     private String formatRemainingTime(long thresholdTime, long timeDifference) {
+
         long remainingMinutes = TimeUnit.MILLISECONDS.toMinutes(thresholdTime - timeDifference);
         long remainingSeconds = TimeUnit.MILLISECONDS.toSeconds(thresholdTime - timeDifference) % 60;
+
         if (remainingMinutes > 0) {
-            return context.getResources().getString(R.string.waiting) + remainingMinutes + R.string.minutes + remainingSeconds + context.getResources().getString(R.string.seconds);
-        } else {
+            return context.getResources().getString(R.string.waiting) + remainingMinutes + context.getResources().getString(R.string.minutes) + remainingSeconds + context.getResources().getString(R.string.seconds);
+        } else if (remainingMinutes <= 0){
             return context.getResources().getString(R.string.waiting) + remainingSeconds + context.getResources().getString(R.string.seconds);
         }
+        return context.getResources().getString(R.string.waiting) + remainingSeconds + context.getResources().getString(R.string.seconds);
+
     }
 
 

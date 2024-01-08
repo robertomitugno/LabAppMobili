@@ -11,21 +11,14 @@ import android.location.Location;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.room.Room;
 
-import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.Noise.NoiseDB;
 import com.example.labappmobili.RoomDB.Noise.NoiseDao;
-import com.example.labappmobili.RoomDB.WiFi.WiFiDB;
 import com.google.android.gms.maps.GoogleMap;
 
 import java.util.ArrayList;
@@ -43,13 +36,15 @@ public class NoiseSignalManager {
     private GoogleMap googleMap;
     private static AudioRecord audioRecord;
     private static boolean isRecording = false;
-    private TextView noiseLevelText;
 
     static GridTileProvider gridTileProvider;
 
     static NoiseDB noiseDB;
 
-
+    public NoiseSignalManager(Context context) {
+        this.context = context;
+        initializeRoomDatabase();
+    }
     public NoiseSignalManager(Context context, GoogleMap map) {
         this.context = context;
         this.googleMap = map;
@@ -81,14 +76,6 @@ public class NoiseSignalManager {
                 isRecording = true;
             }
         }
-    }
-
-    public void updateNoiseLevel() {
-
-        // Passa il valore di lteValue alla classe GridTileProvider
-        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
-        GridManager.getInstance().setGrid(googleMap, gridTileProvider);
-        //boolean boh = GridTileProvider.checkEmptyArea(currentLocation, getAllNoiseValue());
     }
 
     private static void initializeRoomDatabase() {
@@ -136,25 +123,20 @@ public class NoiseSignalManager {
 
         Date date = new Date();
 
-        double latitudine = 0;
-        double longitudine = 0;
-
         double noiseLevel = getNoiseLevel();
 
-        if (currentLocation != null) {
-            latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-            longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
+        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
 
-        }
+        GridTileProvider gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
 
-        GridTileProvider gridTileProvider = new GridTileProvider();
-
-        if (gridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time).startsWith(context.getResources().getString(R.string.waiting))){
-            return gridTileProvider.checkTimeArea(currentLocation, getAllNoiseValue(), time);
+        if (gridTileProvider.checkTimeArea(currentLocation, time).startsWith(context.getResources().getString(R.string.waiting))){
+            return gridTileProvider.checkTimeArea(currentLocation, time);
         }
 
         Noise noiseMeasurement = new Noise(latitudine, longitudine, noiseLevel, date.getTime());
 
+        Log.d("Misurazione","Inserimento rumore : " + latitudine + " : " + longitudine + " : " + noiseLevel);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
@@ -163,6 +145,7 @@ public class NoiseSignalManager {
             noiseDao.insertNoise(noiseMeasurement);
 
         });
+
         //getNoiseListInBackground();
 
         return context.getResources().getString(R.string.measurement_complete);

@@ -14,7 +14,7 @@
 
     <!-- PERMISSION -->
     <string name="permission_required">"Permesso richiesto"</string>
-    <string name="message_position">"Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità."</string>
+    <string name="message_position">"Questa app richiede l'autorizzazione per la posizione per mostrare le notifiche."</string>
     <string name="message_microphone">"Questa app richiede il permesso per il microfono per rilevare il rumore circostante."</string>
     <string name="message_notifications">"Questa app richiede l'autorizzazione per le notifiche."</string>
     <string name="message_background">"Questa app richiede l'autorizzazione per l'accesso alla posizione in background per mostrare le funzionalità."</string>
@@ -27,7 +27,7 @@
     <string name="measurement_error">"Errore nella misurazione."</string>
     <string name="measurement_complete">"Misurazione completata."</string>
     <string name="waiting">"Attendere ancora "</string>
-    <string name="minutes">"minuti e "</string>
+    <string name="minutes">" minuti e "</string>
     <string name="seconds">" secondi "</string>
 
 
@@ -50,12 +50,13 @@
     <string name="measurement_text">"Misurazioni"</string>
     <string name="measurement_text_delay">"Selezionare un intervallo di tempo \ntra le misurazioni"</string>
     <string name="measurement_text_average">"Seleziona quanti degli ultimi valori \nutilizzare per calcolare la media \nper ogni casella."</string>
+    <string name="backgroundMeasure_text">"Consentire l'accesso alle misurazioni \nin background"</string>
 
     <string name="map_text">"Mappa"</string>
     <string name="map_normal">"Normale"</string>
     <string name="map_text_select">"Selezionare una tipologia di mappa"</string>
     <string name="background_text">"Misurazioni in background"</string>
-    <string name="permission_text_background">"Consentire l'accesso alle misurazioni \nin background"</string>
+    <string name="permission_text_background">"Consentire l'accesso alla localizzazione \nin background"</string>
     <string name="database_text_clear">"Svuotare il database?"</string>
     <string name="button_text_empty">"Svuota"</string>
 
