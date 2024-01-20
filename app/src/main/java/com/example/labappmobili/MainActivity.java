@@ -1,10 +1,20 @@
 package com.example.labappmobili;
 
 
+import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
+import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+import static com.example.labappmobili.LteSignalManager.deleteLTEMeasurement;
+import static com.example.labappmobili.LteSignalManager.showLteMap;
+import static com.example.labappmobili.NoiseSignalManager.deleteNoiseMeasurement;
+import static com.example.labappmobili.NoiseSignalManager.showNoiseMap;
+import static com.example.labappmobili.WifiSignalManager.deleteWifiMeasurement;
+import static com.example.labappmobili.WifiSignalManager.showWifiMap;
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -27,6 +37,16 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.Noise.Noise;
+import com.example.labappmobili.RoomDB.WiFi.WiFi;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -36,11 +56,16 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import androidx.lifecycle.Observer;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.Constraints;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
@@ -85,6 +110,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     static String measurementInterval = "5s";  // Default a 5 secondi
 
     float currentZoom;
+
+    boolean showLte = false;
+    boolean showWifi = false;
+    boolean showNoise = false;
+
+    private LineChart lineChart;
 
 
     @Override
@@ -162,6 +193,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, myMap);
                         lteSignalManager.showLteMap();
 
+                        showLte = true;
+                        showWifi = false;
+                        showNoise = false;
+
                         handler.post(updateLteText);
 
                     } else {
@@ -184,7 +219,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         findViewById(R.id.wifilegend).setVisibility(View.VISIBLE);
 
                         wifiSignalManager = new WifiSignalManager(MainActivity.this, myMap);
-                        WifiSignalManager.showWifiMap();
+                        showWifiMap();
+
+                        showLte = false;
+                        showWifi = true;
+                        showNoise = false;
 
                         handler.post(updateWifiText);
                     } else {
@@ -210,6 +249,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 handler.removeCallbacks(updateWifiText);
                 handler.removeCallbacks(updateNoiseText);
 
+                showLte = false;
+                showWifi = false;
+                showNoise = false;
 
                 variableText.setText(R.string.variableText_default);  // Pulisci il testo
                 }
@@ -230,9 +272,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         /*** Richiedi l'autorizzazione per la posizione ***/
-        //findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionNotification());
         findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionLocation());
-        //requestRuntimePermissionNotification();
 
         /*** Preferenze intervallo misurazione ***/
         this.measurementInterval = preferences.getString("measurementInterval", "5s");
@@ -281,7 +321,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(currentLocation != null) {
             WifiSignalManager wifiSignalManager = new WifiSignalManager(MainActivity.this, currentLocation, myMap);
             showToast(WifiSignalManager.insertWifiMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
-            WifiSignalManager.showWifiMap();
+            showWifiMap();
         } else {
             showToast(this.getResources().getString(R.string.location_not_found));
         }
@@ -298,7 +338,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
             NoiseSignalManager noiseSignalManager = new NoiseSignalManager(MainActivity.this, currentLocation, myMap);
             showToast(NoiseSignalManager.insertNoiseMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
-            noiseSignalManager.showNoiseMap();
+            showNoiseMap();
+
+            showLte = false;
+            showWifi = false;
+            showNoise = true;
 
             handler.post(updateNoiseText);
 
@@ -313,7 +357,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void run() {
             // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
-            variableText.setText("Lte : " + LteSignalManager.getLTELevel() + " dBm");
+            variableText.setText(getResources().getString(R.string.lte)+ " : " + LteSignalManager.getLTELevel() + " dBm");
             // Esegui questo Runnable dopo 1 secondo
             handler.postDelayed(this, 1000);
         }
@@ -324,7 +368,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void run() {
             // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
-            variableText.setText("WiFi : " + WifiSignalManager.getWifiLevel() + " Mb/s");
+            variableText.setText(getResources().getString(R.string.wifi)+ " : " + WifiSignalManager.getWifiLevel() + " Mb/s");
             // Esegui questo Runnable dopo 1 secondo
             handler.postDelayed(this, 1000);
         }
@@ -335,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void run() {
             // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
-            variableText.setText("Noise : " + NoiseSignalManager.getNoiseLevel() + " dB/s");
+            variableText.setText(getResources().getString(R.string.noise)+ " : " + + NoiseSignalManager.getNoiseLevel() + " dB/s");
             // Esegui questo Runnable dopo 1 secondo
             handler.postDelayed(this, 1000);
         }
@@ -371,7 +415,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void requestRuntimePermissionAudio() {
         if (ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
             handler.removeCallbacks(updateLteText);
             handler.removeCallbacks(updateWifiText);
 
@@ -379,7 +422,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             findViewById(R.id.noiselegend).setVisibility(View.VISIBLE);
             findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
             noiseSignalManager = new NoiseSignalManager(this, myMap);
-            noiseSignalManager.showNoiseMap();
+            showNoiseMap();
+
+            showLte = false;
+            showWifi = false;
+            showNoise = true;
+
             handler.post(updateNoiseText);
 
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
@@ -493,7 +541,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 //richiesta per misurazione in background
                 noiseSignalManager = new NoiseSignalManager(this, currentLocation, myMap);
-                noiseSignalManager.showNoiseMap();
+                showNoiseMap();
+
+                showLte = false;
+                showWifi = false;
+                showNoise = true;
+
                 handler.post(updateNoiseText);
 
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
@@ -520,17 +573,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    private void showToastZoom() {
-        if(myMap != null) {
-            currentZoom = myMap.getCameraPosition().zoom;
-
-            if (GridManager.getInstance().isVisible() && currentZoom < 4) {
-                // Mostra un Toast per aumentare lo zoom
-                showToast(this.getResources().getString(R.string.increase_zoom));
-            }
-        }
-    }
-
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         myMap = googleMap;
@@ -543,11 +585,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         String selectedMapType = preferencesMap.getString("selectedMapType", "Normal");
         changeMapType(selectedMapType);
 
-        // Aggiungi un listener per ottenere il livello di zoom
-        /*myMap.setOnMapClickListener(latLng -> {
-            float currentZoom = myMap.getCameraPosition().zoom;
-            showToast("Current Zoom Level: " + currentZoom);
-        });*/
+        // Aggiungi l'ascoltatore di tocco per il tocco di lunga durata
+        myMap.setOnMapLongClickListener(latLng -> {
+            if(showLte || showWifi || showNoise)
+                showObjectListDialog(inMetersLatCoordinate(latLng.latitude), inMetersLngCoordinate(latLng.longitude));
+        });
 
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
@@ -559,6 +601,148 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
+
+
+    private void showObjectListDialog(double latitudine, double longitudine) {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        bottomSheetDialog.setContentView(R.layout.bottom_sheet_layout);
+
+        List<?> objectList = GridTileProvider.getListMapTouch(latitudine, longitudine);
+
+        RecyclerView recyclerView = bottomSheetDialog.findViewById(R.id.recyclerView);
+        TextView noMeasurementText = bottomSheetDialog.findViewById(R.id.noMeasurementText);
+        lineChart = bottomSheetDialog.findViewById(R.id.lineChart);
+        ImageButton imageButton = bottomSheetDialog.findViewById(R.id.imageButton);
+        TextView title = bottomSheetDialog.findViewById(R.id.title);
+        TextView subtitle = bottomSheetDialog.findViewById(R.id.subtitle);
+
+
+        if (recyclerView != null) {
+            if(objectList.isEmpty()) {
+                // Nascondi il RecyclerView e mostra il messaggio quando la lista è vuota
+                recyclerView.setVisibility(View.GONE);
+                imageButton.setVisibility(View.GONE);
+                title.setVisibility(View.GONE);
+                subtitle.setVisibility(View.GONE);
+
+
+                if (noMeasurementText != null) {
+                    noMeasurementText.setVisibility(View.VISIBLE);
+                    noMeasurementText.setText(this.getResources().getString(R.string.bottom_nomeasure));
+                }
+            }else{
+
+                MyAdapter adapter = new MyAdapter(objectList, item -> {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle(this.getResources().getString(R.string.bottom_dialog_title));
+                    builder.setMessage(this.getResources().getString(R.string.bottom_dialog_text));
+
+                    builder.setPositiveButton(this.getResources().getString(R.string.confirm), (dialog, which) -> {
+
+                        if (showLte) {
+                            deleteLTEMeasurement(item);
+                            showLteMap();
+                        } else if (showWifi) {
+                            deleteWifiMeasurement(item);
+                            showWifiMap();
+                        } else {
+                            deleteNoiseMeasurement(item);
+                            showNoiseMap();
+                        }
+
+                        dialog.dismiss();
+                        bottomSheetDialog.dismiss();
+
+                        showToast(this.getResources().getString(R.string.measure_delete));
+                    });
+
+                    builder.setNegativeButton(this.getResources().getString(R.string.cancel), (dialog, which) -> {
+                        // Chiudi la finestra di dialogo senza eliminare la misurazione
+                        dialog.dismiss();
+                    });
+
+                    builder.show();
+                });
+
+                recyclerView.setAdapter(adapter);
+                recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            }
+        }
+
+        if (imageButton != null) {
+            imageButton.setOnClickListener(v -> {
+                if (lineChart.getVisibility() == View.VISIBLE ) {
+                    if (lineChart != null) {
+                        lineChart.setVisibility(View.GONE);
+                    }
+                } else {
+                    showLineChart(objectList);
+                }
+            });
+        }
+
+        bottomSheetDialog.show();
+    }
+
+
+    private void showLineChart(List<?> objectList) {
+        if (lineChart != null && objectList != null && objectList.size() > 0) {
+            lineChart.setVisibility(View.VISIBLE);
+            lineChart.setDrawGridBackground(false);
+
+            YAxis yAxis = lineChart.getAxisLeft();
+            YAxis rightYAxis = lineChart.getAxisRight();
+            rightYAxis.setDrawAxisLine(false);
+            rightYAxis.setDrawLabels(false);
+
+            List<Entry> entries = new ArrayList<>();
+            Description description = new Description();
+
+            LineDataSet dataSet = null;
+
+            for (int i = 0; i < objectList.size(); i++) {
+                Object measure = objectList.get(i);
+                float yValue;
+
+                if (showLte) {
+                    yValue = ((LTE) measure).getLteValue();
+                    yAxis.setAxisMaximum(5f);
+                    yAxis.setLabelCount(objectList.size());
+                    description.setText(this.getResources().getString(R.string.lte));
+                } else if (showWifi) {
+                    yValue = (float) ((WiFi) measure).getWiFiValue();
+                    yAxis.setAxisMaximum(100f);
+                    description.setText(this.getResources().getString(R.string.wifi));
+                } else {
+                    yValue = (float) ((Noise) measure).getNoiseValue();
+                    yAxis.setAxisMaximum(100f);
+                    description.setText(this.getResources().getString(R.string.noise));
+                }
+
+                entries.add(new Entry(i, yValue));
+                dataSet = new LineDataSet(entries, description.getText().toString());
+            }
+
+            lineChart.setDescription(description);
+
+            XAxis xAxis = lineChart.getXAxis();
+            xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+            xAxis.setLabelCount(objectList.size());
+            xAxis.setGranularity(1f);
+
+            if (dataSet != null) {
+                dataSet.setColor(Color.BLUE);
+
+                LineData lineData = new LineData(dataSet);
+                lineChart.setData(lineData);
+                lineChart.invalidate();
+            }
+        }
+    }
+
+
+
 
     private void changeMapType(String mapType) {
         if (mapType.equals("Satellite")) {
@@ -638,10 +822,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
 
         final PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
-                BackgroundWorker.class,
-                15,
-                TimeUnit.MINUTES)
-                //.setInitialDelay(6000,TimeUnit.MILLISECONDS)
+                BackgroundWorker.class,15, TimeUnit.MINUTES)
+                .setInitialDelay(6000 ,TimeUnit.MILLISECONDS)
                 .setConstraints(constraints)
                 .build();
 
@@ -654,7 +836,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public void onChanged(@Nullable WorkInfo workInfo) {
                         if (workInfo != null) {
-                            Log.d("Worker", "Status changed to : " + workInfo.getState());
+                            Log.d("BackgroundWorker", "Status changed to : " + workInfo.getState());
                         }
                     }
                 });

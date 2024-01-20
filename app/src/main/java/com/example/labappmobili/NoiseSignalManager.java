@@ -16,6 +16,8 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.room.Room;
 
+import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.Noise.NoiseDB;
 import com.example.labappmobili.RoomDB.Noise.NoiseDao;
@@ -33,7 +35,7 @@ public class NoiseSignalManager {
     private static final int PERMISSION_AUDIO_CODE = 2;
     private static Context context;
     Location currentLocation;
-    private GoogleMap googleMap;
+    private static GoogleMap googleMap;
     private static AudioRecord audioRecord;
     private static boolean isRecording = false;
 
@@ -112,7 +114,7 @@ public class NoiseSignalManager {
         return db;
     }
 
-    void showNoiseMap(){
+    static void showNoiseMap(){
         gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
         GridManager.getInstance().setGrid(googleMap, gridTileProvider);
     }
@@ -175,7 +177,19 @@ public class NoiseSignalManager {
     }
 
 
+    static void deleteNoiseMeasurement(Object noise) {
 
+        initializeRoomDatabase(); // Inizializza il database Room
+
+        Log.d("Misurazione","Eliminazione noise : " + noise);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+            // Esegui l'operazione di inserimento nel database Room su un thread separato
+            NoiseDao noiseDao = noiseDB.getNoiseDao();
+            noiseDao.deleteNoiseById(((Noise) noise).getId());
+        });
+    }
     public static int getNoiseColor(double noiseValue) {
         if (noiseValue > 50) {
             return Color.RED;

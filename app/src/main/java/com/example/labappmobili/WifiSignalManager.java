@@ -12,6 +12,8 @@ import android.util.Log;
 
 import androidx.room.Room;
 
+import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDB;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDao;
@@ -128,6 +130,21 @@ public class WifiSignalManager {
         return context.getResources().getString(R.string.measurement_complete);
     }
 
+
+    static void deleteWifiMeasurement(Object wifi) {
+
+        initializeRoomDatabase(); // Inizializza il database Room
+
+        Log.d("Misurazione","Eliminazione wifi : " + wifi);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+            // Esegui l'operazione di inserimento nel database Room su un thread separato
+            WiFiDao wiFiDao = wifidb.getWiFiDao();
+            wiFiDao.deleteWifiById(((WiFi) wifi).getId());
+        });
+
+    }
 
 
 

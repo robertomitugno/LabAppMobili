@@ -34,19 +34,19 @@ public class GridTileProvider implements TileProvider {
     private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
     private static final int gridSize = 6;
     private float scaleFactor;
-    private List<?> lista;
+    private static List<?> listMeasureSelect;
 
     Context context;
 
     static int zoom = 0;
 
     // Per inizio misurazione
-    public GridTileProvider(Context context, List<?> lista) {
+    public GridTileProvider(Context context, List<?> listMeasureSelect) {
         this.context = context;
         scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
         borderTile = Bitmap.createBitmap((int) (TILE_SIZE_DP * scaleFactor),
                 (int) (TILE_SIZE_DP * scaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
-        this.lista = lista;
+        this.listMeasureSelect = listMeasureSelect;
     }
 
 
@@ -140,7 +140,7 @@ public class GridTileProvider implements TileProvider {
 
                     List<Object> cellValues = new ArrayList<>();
 
-                    for (Object item : lista) { // Itera sulla lista
+                    for (Object item : listMeasureSelect) { // Itera sulla lista
                         if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
                             LTE lteItem = (LTE) item; // Cast esplicito a LTE
                             TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
@@ -231,7 +231,7 @@ public class GridTileProvider implements TileProvider {
         double convertedLng = inMetersLngCoordinate(currentLocation.getLongitude());
         TileDataInfo myTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, zoom, 0);
 
-        for (Object item : lista) { // Itera sulla lista
+        for (Object item : listMeasureSelect) { // Itera sulla lista
 
             if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
                 LTE lteItem = (LTE) item; // Cast esplicito a LTE
@@ -284,7 +284,43 @@ public class GridTileProvider implements TileProvider {
     }
 
 
+    public static List<?> getListMapTouch(double latitudine, double longitudine){
 
+        TileDataInfo myTile = GridTileProvider.getSubTileByCoordinate(longitudine, latitudine, zoom, 0);
+
+        List<Object> listMapTouch = new ArrayList<>();
+        for (Object item : listMeasureSelect) { // Itera sulla lista
+            if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
+
+                LTE lteItem = (LTE) item; // Cast esplicito a LTE
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
+
+                if (myTile.equals(tileFound)) {
+                    listMapTouch.add(lteItem);
+                }
+            }
+
+            else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
+
+                WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+
+                if (myTile.equals(tileFound)) {
+                    listMapTouch.add(wifiItem);
+                }
+            }
+
+            else if (item instanceof Noise) {
+                Noise noiseItem = (Noise) item;
+                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
+                if (myTile.equals(tileFound)) {
+                    listMapTouch.add(noiseItem);
+                }
+            }
+        }
+
+        return listMapTouch;
+    }
 
     public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel, long date) {
         double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
@@ -304,4 +340,5 @@ public class GridTileProvider implements TileProvider {
     public static double inMetersLngCoordinate(double longitude) {
         return longitude * ORIGIN_SHIFT / 180.0;
     }
+
 }

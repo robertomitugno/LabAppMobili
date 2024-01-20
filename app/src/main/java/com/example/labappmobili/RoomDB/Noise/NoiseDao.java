@@ -21,4 +21,7 @@ public interface NoiseDao {
     @Query("DELETE FROM NoiseDB")
     void deleteAllNoise();
 
+    @Query("DELETE FROM NoiseDB WHERE Id = :id")
+    void deleteNoiseById(int id);
+
 }

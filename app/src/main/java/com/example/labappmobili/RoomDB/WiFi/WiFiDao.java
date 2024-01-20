@@ -20,6 +20,6 @@ public interface WiFiDao {
     @Query("DELETE FROM WifiDatabase")
     void deleteAllWifi();
 
-    @Query("UPDATE WifiDatabase SET latitudine=:latitudine , longitudine =:longitudine WHERE id =:id")
-    void updateLTE(String latitudine, String longitudine, int id);
+    @Query("DELETE FROM WifiDatabase WHERE Id = :id")
+    void deleteWifiById(int id);
 }

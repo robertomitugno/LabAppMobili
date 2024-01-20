@@ -5,6 +5,10 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 @Entity (tableName = "NoiseDB")
 public class Noise {
 
@@ -61,14 +65,11 @@ public class Noise {
         return Date;
     }
 
-    @Override
     public String toString() {
-        return "Noise{" +
-                "latitudine=" + latitudine +
-                ", id=" + id +
-                ", longitudine=" + longitudine +
-                ", noiseValue=" + noiseValue +
-                ", Date=" + Date +
-                '}';
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault());
+        String formattedDate = sdf.format(new Date(Date));
+
+        return "Date: " + formattedDate + "\n" +
+                "Noise Value: " + noiseValue;
     }
 }

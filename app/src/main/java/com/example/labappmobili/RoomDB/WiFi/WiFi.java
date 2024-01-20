@@ -5,6 +5,10 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 @Entity (tableName = "WifiDatabase")
 public class WiFi {
 
@@ -62,13 +66,11 @@ public class WiFi {
 
     @Override
     public String toString() {
-        return "WiFi{" +
-                "latitudine=" + latitudine +
-                ", id=" + id +
-                ", longitudine=" + longitudine +
-                ", WiFiValue=" + WiFiValue +
-                ", Date=" + Date +
-                '}';
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault());
+        String formattedDate = sdf.format(new Date(Date));
+
+        return "Date: " + formattedDate + "\n" +
+                "WiFi Value: " + WiFiValue;
     }
 
 }

@@ -6,11 +6,10 @@ import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
 import android.content.Context;
 import android.graphics.Color;
 import android.location.Location;
-import android.os.Handler;
-import android.os.Looper;
+
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.widget.Toast;
+
 
 import androidx.room.Room;
 
@@ -29,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class LteSignalManager {
 
     private static Context context;
-    private GoogleMap googleMap;
+    private static GoogleMap googleMap;
 
     private static TelephonyManager telephonyManager;
 
@@ -45,14 +44,14 @@ public class LteSignalManager {
     }
     public LteSignalManager(Context context, GoogleMap map) {
         this.context = context;
-        this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
+        this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Initialize il TelephonyManager
         this.googleMap = map;
         initializeRoomDatabase();
     }
 
     public LteSignalManager(Context context, Location currentLocation, GoogleMap map) {
         this.context = context;
-        this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Inizializza il TelephonyManager
+        this.telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE); // Initialize TelephonyManager
         this.currentLocation = currentLocation;
         this.googleMap = map;
         initializeRoomDatabase();
@@ -61,8 +60,10 @@ public class LteSignalManager {
 
     static List<LTE> getAllLteValue() {
 
+        initializeRoomDatabase();
+
         if (ltedb == null) {
-            return new ArrayList<>(); // Il database non è ancora inizializzato
+            return new ArrayList<>(); //Il database non è ancora inizializzato
         }
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -134,7 +135,21 @@ public class LteSignalManager {
     }
 
 
-    void showLteMap(){
+    static void deleteLTEMeasurement(Object lte) {
+
+        initializeRoomDatabase(); // Inizializza il database Room
+
+        Log.d("Misurazione","Eliminazione lte : " + lte);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+            // Esegui l'operazione di inserimento nel database Room su un thread separato
+            LTEDao lteDao = ltedb.getLTEDao();
+            lteDao.deleteLTEById(((LTE) lte).getId());
+        });
+    }
+
+    static void showLteMap(){
         gridTileProvider = new GridTileProvider(context, getAllLteValue());
         GridManager.getInstance().setGrid(googleMap, gridTileProvider);
     }
@@ -145,44 +160,10 @@ public class LteSignalManager {
             return Color.GREEN;
         } else if (valore > 2) {
             return Color.YELLOW;
-        } else if (valore <= 2) {
-            return Color.RED;
         } else {
-            return Color.TRANSPARENT;
+            return Color.RED;
         }
     }
 
-
-    public static void getLteListInBackground(){
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        Handler handler = new Handler(Looper.getMainLooper());
-
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-
-                //background task
-                LTElist = ltedb.getLTEDao().getAllLte();
-
-
-                //on finish task
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        StringBuilder sb = new StringBuilder();
-                        for(LTE lte : LTElist){
-                            sb.append(lte.getLatitudine() + " : " + lte.getLongitudine() + " : " + lte.getId() + " : " + lte.getDate());
-                            sb.append("\n");
-                        }
-
-                        String finalData = sb.toString();
-                        Toast.makeText(context, ""+finalData, Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        });
-
-    }
 }
 

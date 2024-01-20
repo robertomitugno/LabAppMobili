@@ -108,19 +108,24 @@ public class BackgroundWorker extends Worker {
             NotificationChannel channel = new NotificationChannel("1",
                     "android",
                     NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("WorkManger");
+            channel.setDescription("WorkManager");
             mNotificationManager.createNotificationChannel(channel);
         }
+
+        // Utilizzo di BigTextStyle per estendere il riquadro della notifica
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getApplicationContext(), "1")
-                .setSmallIcon(R.mipmap.ic_launcher) // notification icon
-                .setContentTitle(title) // title for notification
-                .setContentText(message)// message for notification
-                .setAutoCancel(true); // clear notification after click
+                .setSmallIcon(R.drawable.app_image) // icona della notifica
+                .setContentTitle(title) // titolo della notifica
+                .setContentText(message) // testo della notifica
+                .setAutoCancel(true) // cancella la notifica dopo il clic
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(message)); // utilizzo di BigTextStyle
+
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mBuilder.setContentIntent(pi);
         mNotificationManager.notify(0, mBuilder.build());
     }
+
 
     @SuppressLint("MissingPermission")
     public void getLocation() {

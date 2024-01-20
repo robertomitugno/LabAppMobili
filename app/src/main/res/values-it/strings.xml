@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LabAppMobili</string>
+    <string name="app_name">GeoSignal</string>
     <string name="my_app_api_key">AIzaSyCfZDSzDqILz9We8NqjIQGUV4gq3MZbjko</string>
 
     <string name="variableText_default">"Selezionare una misurazione.."</string>
@@ -10,6 +10,7 @@
     <string name="permission_denied">Permesso non concesso. Modificare le impostazioni.</string>
     <string name="increase_zoom">"Aumentare lo zoom per visualizzare la griglia correttamente"</string>
     <string name="permission_granted">"Permesso consentito."</string>
+    <string name="measure_delete">Misurazione eliminata con successo</string>
 
 
     <!-- PERMISSION -->
@@ -34,7 +35,7 @@
     <!-- SETTING -->
     <string name="message_clear_db">"Confermare l'eliminazione di tutti i dati dal database?"</string>
     <string name="title_clear_db">"Conferma Eliminazione"</string>
-    <string name="confirm">"Confirm"</string>
+    <string name="confirm">"Conferma"</string>
     <string name="messsage_background_always">"Impostare l'accesso alla posizione in background a 'Consenti sempre'"</string>
 
 
@@ -68,15 +69,22 @@
     <string name="notification_empty_noise">"Sei entrato in una zona non ancora misurata con il rumore. Aggiorna la tua mappa!"</string>
 
 
+    <!-- BOTTOM LIST -->
+    <string name="bottom_title">Lista delle misurazioni per la\nzona selezionata</string>
+    <string name="bottom_subtitle">Tieni premuta una misurazione per eliminarla</string>
+    <string name="bottom_nomeasure">Nessuna misurazione per quest\'area</string>
+    <string name="bottom_dialog_text">Vuoi eliminare questa misurazione dal tuo database?</string>
+    <string name="bottom_dialog_title">Elimina misurazione</string>
+
 
     <string name="noise_button">"RUMORE"</string>
-    <string name="noise">"Rumore : "</string>
+    <string name="wifi_button">"WIFI"</string>
+    <string name="lte_button">"LTE"</string>
+
+    <string name="lte">"LTE"</string>
+    <string name="wifi">"WiFi"</string>
+    <string name="noise">"Rumore"</string>
 
 
-    <string-array name="menu_options">
-        <item name="menu_wifi">WIFI</item>
-        <item name="menu_lte">LTE</item>
-        <item name="menu_noise">RUMORE</item>
-    </string-array>
 
 </resources>
