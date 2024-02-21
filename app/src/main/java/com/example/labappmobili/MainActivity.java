@@ -1,9 +1,20 @@
 package com.example.labappmobili;
 
 
+import static com.example.labappmobili.GridTileProvider.latitudineInMeters;
+import static com.example.labappmobili.GridTileProvider.longitudineInMeters;
+import static com.example.labappmobili.LteSignalManager.deleteLTEMeasurement;
+import static com.example.labappmobili.LteSignalManager.showLteMap;
+import static com.example.labappmobili.NoiseSignalManager.deleteNoiseMeasurement;
+import static com.example.labappmobili.NoiseSignalManager.showNoiseMap;
+import static com.example.labappmobili.WifiSignalManager.deleteWifiMeasurement;
+import static com.example.labappmobili.WifiSignalManager.showWifiMap;
+
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -12,22 +23,30 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.ImageButton;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.example.labappmobili.RoomDB.LTE.LTE;
+import com.example.labappmobili.RoomDB.Noise.Noise;
+import com.example.labappmobili.RoomDB.WiFi.WiFi;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -37,8 +56,20 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import androidx.lifecycle.Observer;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.Constraints;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -52,6 +83,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static final int PERMISSION_NOTIFICATION_CODE = 3;
     public static final String NOTIFICATION_PERMISSION = android.Manifest.permission.POST_NOTIFICATIONS;
 
+    public static final int PERMISSION_BACKGROUND_CODE = 4;
+    public static final String BACKGROUND_PERMISSION = Manifest.permission.ACCESS_BACKGROUND_LOCATION;
+
     private WifiSignalManager wifiSignalManager;
     private NoiseSignalManager noiseSignalManager;
     private SearchView mapSearchView;
@@ -63,20 +97,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private TextView variableText;
 
-    CheckBox lteCheckBox, wifiCheckBox, rumoreCheckBox;
+    CheckBox lteCheckBox, wifiCheckBox, noiseCheckBox;
     static boolean isWifiEnabled = true;
     static boolean isLteEnabled = true;
 
+    Button startMeasure;
 
-    // Dichiarazione del tuo handler
     private final Handler handler = new Handler();
 
-    // Dichiarazione della tua variabile per l'intervallo di tempo
-    private String measurementInterval = "5s";  // Default a 5 secondi
-    private String selectedMapType;
+    static String measurementInterval = "5s";  // Default a 5 secondi
 
+    float currentZoom;
 
-    private boolean isMeasuring = false;
+    boolean showLte = false;
+    boolean showWifi = false;
+    boolean showNoise = false;
+
+    private LineChart lineChart;
 
 
     @Override
@@ -85,10 +122,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         mapSearchView = findViewById(R.id.mapSearch);
-
-
         variableText = findViewById(R.id.variableText);
 
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+
+        createWorker();
 
 
         /*** SearchBox ***/
@@ -127,67 +165,93 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Collega le variabili ai CheckBox nell'XML
         lteCheckBox = findViewById(R.id.lteCheckBox);
         wifiCheckBox = findViewById(R.id.wifiCheckBox);
-        rumoreCheckBox = findViewById(R.id.rumoreCheckBox);
+        noiseCheckBox = findViewById(R.id.noiseCheckBox);
 
 
         // Aggiungi un listener per gestire gli eventi di selezione
         CheckBox.OnCheckedChangeListener checkBoxListener = (buttonView, isChecked) -> {
 
-            if (isChecked && !isMeasuring) {
+            if (isChecked) {
+                // Aggiungi le azioni da eseguire quando un CheckBox viene selezionato
+                int checkBoxId = buttonView.getId();
 
-                    // Aggiungi le azioni da eseguire quando un CheckBox viene selezionato
-                    int checkBoxId = buttonView.getId();
+                if (checkBoxId == R.id.lteCheckBox) {
+                    wifiCheckBox.setChecked(false);
+                    noiseCheckBox.setChecked(false);
+                    // Azioni per la selezione di LTE
+                    isLteEnabled = preferences.getBoolean("isLteEnabled", true);
+                    if (isLteEnabled) {
+                        handler.removeCallbacks(updateWifiText);
+                        handler.removeCallbacks(updateNoiseText);
 
-                    if (checkBoxId == R.id.lteCheckBox) {
-                        wifiCheckBox.setChecked(false);
-                        rumoreCheckBox.setChecked(false);
-                        // Azioni per la selezione di LTE
-                        if (isLteEnabled) {
-                            variableText.setText("Misurazione in corso . . .");
-                            LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, myMap);
-                            lteSignalManager.updateLTELevel();
+                        findViewById(R.id.ltelegend).setVisibility(View.VISIBLE);
+                        findViewById(R.id.noiselegend).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
 
-                        } else {
-                            Toast.makeText(this, "Permesso non concesso. Modificare le impostazioni.", Toast.LENGTH_LONG).show();
-                            buttonView.setChecked(false);
-                        }
+                        LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, myMap);
+                        lteSignalManager.showLteMap();
+
+                        showLte = true;
+                        showWifi = false;
+                        showNoise = false;
+
+                        handler.post(updateLteText);
+
+                    } else {
+                        Toast.makeText(this, R.string.permission_denied , Toast.LENGTH_LONG).show();
+                        buttonView.setChecked(false);
                     }
+                }
 
-                    else if (checkBoxId == R.id.wifiCheckBox) {
-                        lteCheckBox.setChecked(false);
-                        rumoreCheckBox.setChecked(false);
-                        // Azioni per la selezione di WiFi
-                        if (isWifiEnabled) {
-                            variableText.setText("Misurazione in corso . . .");
-                            wifiSignalManager = new WifiSignalManager(MainActivity.this, myMap);
-                            wifiSignalManager.updateWifiSignalStrength();
-                        } else {
-                            Toast.makeText(this, "Permesso non concesso. Modificare le impostazioni.", Toast.LENGTH_LONG).show();
-                            buttonView.setChecked(false);
-                        }
-                    }
+                else if (checkBoxId == R.id.wifiCheckBox) {
+                    lteCheckBox.setChecked(false);
+                    noiseCheckBox.setChecked(false);
+                    // Azioni per la selezione di WiFi
+                    isWifiEnabled = preferences.getBoolean("isWifiEnabled", true);
+                    if (isWifiEnabled) {
+                        handler.removeCallbacks(updateLteText);
+                        handler.removeCallbacks(updateNoiseText);
 
-                    else if (checkBoxId == R.id.rumoreCheckBox) {
-                        lteCheckBox.setChecked(false);
-                        wifiCheckBox.setChecked(false);
-                        // Azioni per la selezione di Rumore
-                        requestRuntimePermissionAudio();
+                        findViewById(R.id.ltelegend).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.noiselegend).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.wifilegend).setVisibility(View.VISIBLE);
+
+                        wifiSignalManager = new WifiSignalManager(MainActivity.this, myMap);
+                        showWifiMap();
+
+                        showLte = false;
+                        showWifi = true;
+                        showNoise = false;
+
+                        handler.post(updateWifiText);
+                    } else {
+                        Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_LONG).show();
+                        buttonView.setChecked(false);
                     }
-                } else if(isChecked && isMeasuring) {
-                    showToast("Interrompere la misurazione in corso prima di selezionare un'altra opzione.");
-                    buttonView.setChecked(false);  // Annulla la selezione
-                } else if(!isChecked && isMeasuring){
-                    showToast("Interrompere la misurazione in corso prima di deselezionare la misurazione.");
-                    buttonView.setChecked(true);  // Annulla la selezione
-                } else {
-                    // Se è in corso una misurazione, arrestala
-                    handler.removeCallbacks(updateLteLevelRunnable);
-                    handler.removeCallbacks(updateWifiLevelRunnable);
-                    handler.removeCallbacks(updateRumoreLevelRunnable);
-                    isMeasuring = false;
-                    GridManager.getInstance().removeGrid();
-                    //showToast("Errore generale");
-                    variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
+                }
+
+                else if (checkBoxId == R.id.noiseCheckBox) {
+                    lteCheckBox.setChecked(false);
+                    wifiCheckBox.setChecked(false);
+                    // Azioni per la selezione di Rumore
+                    requestRuntimePermissionAudio();
+                }
+            } else {
+                GridManager.getInstance().removeGrid();
+
+                findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
+                findViewById(R.id.ltelegend).setVisibility(View.INVISIBLE);
+                findViewById(R.id.noiselegend).setVisibility(View.INVISIBLE);
+
+                handler.removeCallbacks(updateLteText);
+                handler.removeCallbacks(updateWifiText);
+                handler.removeCallbacks(updateNoiseText);
+
+                showLte = false;
+                showWifi = false;
+                showNoise = false;
+
+                variableText.setText(R.string.variableText_default);  // Pulisci il testo
                 }
 
         };
@@ -195,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Aggiungi il listener ai CheckBox
         lteCheckBox.setOnCheckedChangeListener(checkBoxListener);
         wifiCheckBox.setOnCheckedChangeListener(checkBoxListener);
-        rumoreCheckBox.setOnCheckedChangeListener(checkBoxListener);
+        noiseCheckBox.setOnCheckedChangeListener(checkBoxListener);
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -208,51 +272,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         /*** Richiedi l'autorizzazione per la posizione ***/
         findViewById(R.id.my_location).setOnClickListener(v -> requestRuntimePermissionLocation());
 
-
         /*** Preferenze intervallo misurazione ***/
-        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         this.measurementInterval = preferences.getString("measurementInterval", "5s");
 
-
-        SharedPreferences preferencesMap = getSharedPreferences("MyPrefs", MODE_PRIVATE);
-        this.selectedMapType = preferences.getString("selectedMapType", "Normal");
-
-
-        /*** Listener per bottone misurazioni ***/
-        findViewById(R.id.misura).setOnClickListener(v -> {
-
-            if (isMeasuring) {
-                // Se è in corso una misurazione, arrestala
-                handler.removeCallbacks(updateLteLevelRunnable);
-                handler.removeCallbacks(updateWifiLevelRunnable);
-                handler.removeCallbacks(updateRumoreLevelRunnable);
-
-                isMeasuring = false;
-                showToast("Misurazione interrotta");
-                variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
-            } else {
-                // Altrimenti, avvia la misurazione
-                if (lteCheckBox.isChecked()) {
-                    isMeasuring = true;
-                    showToast("Misurazione Lte in corso...");
-                    handler.post(updateLteLevelRunnable);
-                } else if (wifiCheckBox.isChecked()) {
-                    // Esegui azioni per misurazione WiFi
-                    isMeasuring = true;
-                    showToast("Misurazione WiFi in corso...");
-                    handler.post(updateWifiLevelRunnable);
-                } else if (rumoreCheckBox.isChecked()) {
-                    // Esegui azioni per misurazione Rumore
-                    isMeasuring = true;
-                    showToast("Misurazione Rumore in corso...");
-                    handler.post(updateRumoreLevelRunnable);
-                } else {
-                    showToast("Seleziona un tipo di misurazione");
-                    isMeasuring = false;
-                }
-            }
-
-        });
+        startMeasure = findViewById(R.id.startMeasure);
+        startMeasure.setOnClickListener(v -> startMeasurement());
 
 
         /*** Gestore bottone impostazioni ***/
@@ -262,72 +286,101 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(optionsIntent);
         });
 
-
     }
 
 
 
-    // Dichiarazione del runnable per eseguire l'azione periodica
-    private final Runnable updateLteLevelRunnable = new Runnable() {
+    private void startMeasurement() {
+        // Altrimenti, avvia la misurazione
+        if (lteCheckBox.isChecked()) {
+            updateLteLevel();
+        } else if (wifiCheckBox.isChecked()) {
+            updateWifiLevel();
+        } else if (noiseCheckBox.isChecked()) {
+            updateNoiseLevel();
+        } else {
+            showToast(this.getResources().getString(R.string.select_measure));
+        }
+    }
+
+
+    void updateLteLevel(){
+        if(currentLocation != null) {
+            LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, currentLocation, myMap);
+            showToast(LteSignalManager.insertLTEMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
+            lteSignalManager.showLteMap();
+        } else {
+            showToast(this.getResources().getString(R.string.location_not_found));
+        }
+    }
+
+    void updateWifiLevel(){
+        if(currentLocation != null) {
+            WifiSignalManager wifiSignalManager = new WifiSignalManager(MainActivity.this, currentLocation, myMap);
+            showToast(WifiSignalManager.insertWifiMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
+            showWifiMap();
+        } else {
+            showToast(this.getResources().getString(R.string.location_not_found));
+        }
+    }
+
+
+    void updateNoiseLevel(){
+        if(currentLocation != null) {
+
+            handler.removeCallbacks(updateLteText);
+            handler.removeCallbacks(updateWifiText);
+            findViewById(R.id.ltelegend).setVisibility(View.INVISIBLE);
+            findViewById(R.id.noiselegend).setVisibility(View.VISIBLE);
+            findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
+            NoiseSignalManager noiseSignalManager = new NoiseSignalManager(MainActivity.this, currentLocation, myMap);
+            showToast(NoiseSignalManager.insertNoiseMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
+            showNoiseMap();
+
+            showLte = false;
+            showWifi = false;
+            showNoise = true;
+
+            handler.post(updateNoiseText);
+
+        } else {
+            showToast(this.getResources().getString(R.string.location_not_found));
+        }
+    }
+
+
+    // Runnable per aggiornare il testo della TextView ogni secondo
+    private final Runnable updateLteText = new Runnable() {
         @Override
         public void run() {
-            // Chiamata al metodo updateLteLevel()
-            if(currentLocation != null) {
-                LteSignalManager lteSignalManager = new LteSignalManager(MainActivity.this, currentLocation, myMap);
-                lteSignalManager.updateLTELevel();
-            } else {
-                showToast("Posizione non disponibile.");
-                handler.removeCallbacks(this);
-                isMeasuring = false;
-                return;
-            }
-
-            // Pianifica il prossimo aggiornamento dopo l'intervallo specificato
-            handler.postDelayed(this, getIntervalInMillis());
+            // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
+            variableText.setText(getResources().getString(R.string.lte)+ " : " + LteSignalManager.getLTELevel() + " dBm");
+            // Esegui questo Runnable dopo 1 secondo
+            handler.postDelayed(this, 1000);
         }
     };
 
-
-
-    private final Runnable updateWifiLevelRunnable = new Runnable() {
+    // Runnable per aggiornare il testo della TextView ogni secondo
+    private final Runnable updateWifiText = new Runnable() {
         @Override
         public void run() {
-            // Chiamata al metodo updateLteLevel()
-            if(currentLocation != null) {
-                WifiSignalManager wifiSignalManager = new WifiSignalManager(MainActivity.this, currentLocation, myMap);
-                wifiSignalManager.updateWifiSignalStrength();
-            } else {
-                showToast("Posizione non disponibile.");
-                handler.removeCallbacks(this);
-                isMeasuring = false;
-                return;
-            }
-
-            // Pianifica il prossimo aggiornamento dopo l'intervallo specificato
-            handler.postDelayed(this, getIntervalInMillis());
+            // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
+            variableText.setText(getResources().getString(R.string.wifi)+ " : " + WifiSignalManager.getWifiLevel() + " Mb/s");
+            // Esegui questo Runnable dopo 1 secondo
+            handler.postDelayed(this, 1000);
         }
     };
 
-
-    private final Runnable updateRumoreLevelRunnable = new Runnable() {
+    // Runnable per aggiornare il testo della TextView ogni secondo
+    private final Runnable updateNoiseText = new Runnable() {
         @Override
         public void run() {
-            // Chiamata al metodo updateLteLevel()
-            if(currentLocation != null) {
-                NoiseSignalManager noiseSignalManager = new NoiseSignalManager(MainActivity.this, currentLocation, myMap);
-                noiseSignalManager.updateNoiseLevel();
-            } else {
-                showToast("Posizione non disponibile.");
-                handler.removeCallbacks(this);
-                isMeasuring = false;
-                return;
-            }
-
-            // Pianifica il prossimo aggiornamento dopo l'intervallo specificato
-            handler.postDelayed(this, getIntervalInMillis());
+            // Aggiorna il testo della TextView con il valore da lteSignalManager.getLTELevel()
+            variableText.setText(getResources().getString(R.string.noise)+ " : " + + NoiseSignalManager.getNoiseLevel() + " dB/s");
+            // Esegui questo Runnable dopo 1 secondo
+            handler.postDelayed(this, 1000);
         }
     };
-
 
     private void requestRuntimePermissionLocation() {
         if (ActivityCompat.checkSelfPermission(this, FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
@@ -336,15 +389,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_position)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{FINE_LOCATION_PERMISSION},
                                 PERMISSION_LOCATION_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> {
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
                         dialog.dismiss();
                     });
 
@@ -359,25 +412,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void requestRuntimePermissionAudio() {
         if (ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+            handler.removeCallbacks(updateLteText);
+            handler.removeCallbacks(updateWifiText);
 
-            //TODO mettere controllo localizzazione prima della richiesta dell'audio.
+            findViewById(R.id.ltelegend).setVisibility(View.INVISIBLE);
+            findViewById(R.id.noiselegend).setVisibility(View.VISIBLE);
+            findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
             noiseSignalManager = new NoiseSignalManager(this, myMap);
-            //richiesta per controllo misurazione in background
-            noiseSignalManager.updateNoiseLevel();
+            showNoiseMap();
+
+            showLte = false;
+            showWifi = false;
+            showNoise = true;
+
+            handler.post(updateNoiseText);
 
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_microphone)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{RECORD_AUDIO_PERMISSION},
                                 PERMISSION_AUDIO_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss())
                     );
 
             builder.show();
@@ -386,28 +447,76 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+
+    private void requestRuntimePermissionNotification() {
+        if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
+            // Spiega l'importanza dell'autorizzazione all'utente
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage(R.string.message_notifications)
+                    .setTitle(R.string.permission_required)
+                    .setCancelable(false)
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{NOTIFICATION_PERMISSION},
+                                PERMISSION_NOTIFICATION_CODE);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                        dialog.dismiss();
+                    });
+
+            builder.show();
+        } else {
+            // Richiedi l'autorizzazione
+            ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
+            //requestPermissions(new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == PERMISSION_LOCATION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Se l'autorizzazione è stata concessa, ottieni la posizione
-                getLocation();
-            } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
+        if (requestCode == PERMISSION_NOTIFICATION_CODE) {
+            if (!ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
                 // L'utente ha negato l'autorizzazione in modo permanente, mostra un messaggio
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
+
+                builder.show();
+            } else {
+                // L'utente ha negato l'autorizzazione, richiedi di nuovo
+                requestRuntimePermissionNotification();
+            }
+        } else if (requestCode == PERMISSION_LOCATION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Se l'autorizzazione è stata concessa, ottieni la posizione
+                getLocation();
+            } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
+                // L'utente ha negato l'autorizzazione in modo permanente, mostra un messaggio
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.message_position)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             } else {
@@ -418,22 +527,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         /*** Richiesta autorizzazione per l'audio ***/
         else if (requestCode == PERMISSION_AUDIO_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission Granted. ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_SHORT).show();
 
-                //TODO mettere controllo localizzazione prima della richiesta dell'audio.
-                noiseSignalManager = new NoiseSignalManager(this, myMap);
+                handler.removeCallbacks(updateLteText);
+                handler.removeCallbacks(updateWifiText);
+
+                findViewById(R.id.wifilegend).setVisibility(View.INVISIBLE);
+                findViewById(R.id.ltelegend).setVisibility(View.INVISIBLE);
+                findViewById(R.id.noiselegend).setVisibility(View.VISIBLE);
 
                 //richiesta per misurazione in background
-                //noiseSignalManager = new NoiseSignalManager(this, currentLocation, myMap);
-                noiseSignalManager.updateNoiseLevel();
+                noiseSignalManager = new NoiseSignalManager(this, currentLocation, myMap);
+                showNoiseMap();
+
+                showLte = false;
+                showWifi = false;
+                showNoise = true;
+
+                handler.post(updateNoiseText);
 
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_microphone)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
@@ -441,7 +560,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss()));
+                        .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss()));
 
                 builder.show();
             } else {
@@ -458,11 +577,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Imposta il massimo livello di zoom a 16
         myMap.setMaxZoomPreference(16);
 
-        if(selectedMapType == "Satellite") {
-            myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-        }else {
-            myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-        }
+        // Utilizza il valore selezionato dallo spinner per impostare il tipo di mappa
+        SharedPreferences preferencesMap = getSharedPreferences("PrefMap", MODE_PRIVATE);
+        String selectedMapType = preferencesMap.getString("selectedMapType", "Normal");
+        changeMapType(selectedMapType);
+
+        // Aggiungi l'ascoltatore di tocco per il tocco di lunga durata
+        myMap.setOnMapLongClickListener(latLng -> {
+            if(showLte || showWifi || showNoise)
+                showObjectListDialog(latitudineInMeters(latLng.latitude), longitudineInMeters(latLng.longitude));
+        });
 
         // Posiziona la mappa sulla posizione corrente
         if (currentLatLng != null) {
@@ -471,6 +595,157 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
                 myMap.setMyLocationEnabled(true);
             }
+        }
+
+    }
+
+
+    private void showObjectListDialog(double latitudine, double longitudine) {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        bottomSheetDialog.setContentView(R.layout.bottom_sheet_layout);
+
+        List<?> objectList = GridTileProvider.getListMapTouch(latitudine, longitudine);
+
+        RecyclerView recyclerView = bottomSheetDialog.findViewById(R.id.recyclerView);
+        TextView noMeasurementText = bottomSheetDialog.findViewById(R.id.noMeasurementText);
+        lineChart = bottomSheetDialog.findViewById(R.id.lineChart);
+        ImageButton imageButton = bottomSheetDialog.findViewById(R.id.imageButton);
+        TextView title = bottomSheetDialog.findViewById(R.id.title);
+        TextView subtitle = bottomSheetDialog.findViewById(R.id.subtitle);
+
+
+        if (recyclerView != null) {
+            if(objectList.isEmpty()) {
+                // Nascondi il RecyclerView e mostra il messaggio quando la lista è vuota
+                recyclerView.setVisibility(View.GONE);
+                imageButton.setVisibility(View.GONE);
+                title.setVisibility(View.GONE);
+                subtitle.setVisibility(View.GONE);
+
+
+                if (noMeasurementText != null) {
+                    noMeasurementText.setVisibility(View.VISIBLE);
+                    noMeasurementText.setText(this.getResources().getString(R.string.bottom_nomeasure));
+                }
+            }else{
+
+                MyAdapter adapter = new MyAdapter(objectList, item -> {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle(this.getResources().getString(R.string.bottom_dialog_title));
+                    builder.setMessage(this.getResources().getString(R.string.bottom_dialog_text));
+
+                    builder.setPositiveButton(this.getResources().getString(R.string.confirm), (dialog, which) -> {
+
+                        if (showLte) {
+                            deleteLTEMeasurement(item);
+                            showLteMap();
+                        } else if (showWifi) {
+                            deleteWifiMeasurement(item);
+                            showWifiMap();
+                        } else {
+                            deleteNoiseMeasurement(item);
+                            showNoiseMap();
+                        }
+
+                        dialog.dismiss();
+                        bottomSheetDialog.dismiss();
+
+                        showToast(this.getResources().getString(R.string.measure_delete));
+                    });
+
+                    builder.setNegativeButton(this.getResources().getString(R.string.cancel), (dialog, which) -> {
+                        // Chiudi la finestra di dialogo senza eliminare la misurazione
+                        dialog.dismiss();
+                    });
+
+                    builder.show();
+                });
+
+                recyclerView.setAdapter(adapter);
+                recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            }
+        }
+
+        if (imageButton != null) {
+            imageButton.setOnClickListener(v -> {
+                if (lineChart.getVisibility() == View.VISIBLE ) {
+                    if (lineChart != null) {
+                        lineChart.setVisibility(View.GONE);
+                    }
+                } else {
+                    showLineChart(objectList);
+                }
+            });
+        }
+
+        bottomSheetDialog.show();
+    }
+
+
+    private void showLineChart(List<?> objectList) {
+        if (lineChart != null && objectList != null && objectList.size() > 0) {
+            lineChart.setVisibility(View.VISIBLE);
+            lineChart.setDrawGridBackground(false);
+
+            YAxis yAxis = lineChart.getAxisLeft();
+            YAxis rightYAxis = lineChart.getAxisRight();
+            rightYAxis.setDrawAxisLine(false);
+            rightYAxis.setDrawLabels(false);
+
+            List<Entry> entries = new ArrayList<>();
+            Description description = new Description();
+
+            LineDataSet dataSet = null;
+
+            for (int i = 0; i < objectList.size(); i++) {
+                Object measure = objectList.get(i);
+                float yValue;
+
+                if (showLte) {
+                    yValue = ((LTE) measure).getLteValue();
+                    yAxis.setAxisMaximum(5f);
+                    yAxis.setLabelCount(objectList.size());
+                    description.setText(this.getResources().getString(R.string.lte));
+                } else if (showWifi) {
+                    yValue = (float) ((WiFi) measure).getWiFiValue();
+                    yAxis.setAxisMaximum(100f);
+                    description.setText(this.getResources().getString(R.string.wifi));
+                } else {
+                    yValue = (float) ((Noise) measure).getNoiseValue();
+                    yAxis.setAxisMaximum(100f);
+                    description.setText(this.getResources().getString(R.string.noise));
+                }
+
+                entries.add(new Entry(i, yValue));
+                dataSet = new LineDataSet(entries, description.getText().toString());
+            }
+
+            lineChart.setDescription(description);
+
+            XAxis xAxis = lineChart.getXAxis();
+            xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+            xAxis.setLabelCount(objectList.size());
+            xAxis.setGranularity(1f);
+
+            if (dataSet != null) {
+                dataSet.setColor(Color.BLUE);
+
+                LineData lineData = new LineData(dataSet);
+                lineChart.setData(lineData);
+                lineChart.invalidate();
+            }
+        }
+    }
+
+
+
+
+    private void changeMapType(String mapType) {
+        if (mapType.equals("Satellite")) {
+            myMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+        } else {
+            myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         }
     }
 
@@ -481,7 +756,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (myMap != null) {
             onMapReady(myMap);
         }
-
     }
 
     @Override
@@ -495,16 +769,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onPause() {
         super.onPause();
-        // Se è in corso una misurazione, arrestala
-        handler.removeCallbacks(updateLteLevelRunnable);
-        handler.removeCallbacks(updateWifiLevelRunnable);
-        handler.removeCallbacks(updateRumoreLevelRunnable);
-        if(isMeasuring) {
-            isMeasuring = false;
-            showToast("Misurazione interrotta");
-        }
-        variableText.setText("VISUALIZZA MISURAZIONI...");  // Pulisci il testo
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
 
     private void getLocation() {
         // Ottieni l'ultima posizione concesso
@@ -519,7 +790,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     onMapReady(myMap);
 
                 } else {
-                    Toast.makeText(MainActivity.this, "Posizione non disponibile.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.location_not_found, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -530,16 +801,47 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     // Metodo per ottenere l'intervallo in millisecondi
-    private long getIntervalInMillis() {
+    static long getIntervalInMillis(String time) {
         long interval = 5000;  // Default a 5 secondi
 
         // Conversione dell'intervallo da stringa a millisecondi
-        if (measurementInterval.endsWith("s")) {
-            interval = Long.parseLong(measurementInterval.replace("s", "")) * 1000;
-        } else if (measurementInterval.endsWith("m")) {
-            interval = Long.parseLong(measurementInterval.replace("m", "")) * 60 * 1000;
+        if (time.endsWith("s")) {
+            interval = Long.parseLong(time.replace("s", "")) * 1000;
+        } else if (time.endsWith("m")) {
+            interval = Long.parseLong(time.replace("m", "")) * 60 * 1000;
         }
 
         return interval;
     }
+
+    private void createWorker(){
+
+        Constraints constraints = new Constraints.Builder().setRequiresBatteryNotLow(true).build();
+
+        final PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest.Builder(
+                BackgroundWorker.class,15, TimeUnit.MINUTES)
+                .setInitialDelay(6000 ,TimeUnit.MILLISECONDS)
+                .setConstraints(constraints)
+                .build();
+
+        WorkManager workManager =  WorkManager.getInstance(this);
+
+        workManager.enqueue(periodicWorkRequest);
+
+        workManager.getWorkInfoByIdLiveData(periodicWorkRequest.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(@Nullable WorkInfo workInfo) {
+                        if (workInfo != null) {
+                            Log.d("BackgroundWorker", "Status changed to : " + workInfo.getState());
+                        }
+                    }
+                });
+    }
+
+
+    public static void stopWorker() {
+        WorkManager.getInstance().cancelAllWork();
+    }
+
 }

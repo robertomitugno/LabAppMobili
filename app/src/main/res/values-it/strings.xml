@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">GeoSignal</string>
+    <string name="my_app_api_key"></string>
+
+    <string name="variableText_default">"Selezionare un segnale.."</string>
+
+    <!-- TOAST MESSAGE -->
+    <string name="select_measure">"Selezionare un tipo di misurazione"</string>
+    <string name="location_not_found">"Posizione non disponibile."</string>
+    <string name="permission_denied">Permesso non concesso. Modificare le impostazioni.</string>
+    <string name="increase_zoom">"Aumentare lo zoom per visualizzare la griglia correttamente"</string>
+    <string name="permission_granted">"Permesso consentito."</string>
+    <string name="measure_delete">Misurazione eliminata con successo</string>
+
+
+    <!-- PERMISSION -->
+    <string name="permission_required">"Permesso richiesto"</string>
+    <string name="message_position">"Questa app richiede l'autorizzazione per la posizione per mostrare le notifiche."</string>
+    <string name="message_microphone">"Questa app richiede il permesso per il microfono per rilevare il rumore circostante."</string>
+    <string name="message_notifications">"Questa app richiede l'autorizzazione per le notifiche."</string>
+    <string name="message_background">"Questa app richiede l'autorizzazione per l'accesso alla posizione in background per mostrare le funzionalità."</string>
+
+    <string name="cancel">"Annulla"</string>
+    <string name="setting">"Impostazioni"</string>
+
+
+    <!-- MEASUREMENT -->
+    <string name="measurement_error">"Errore nella misurazione."</string>
+    <string name="measurement_complete">"Misurazione completata."</string>
+    <string name="waiting">"Attendere ancora "</string>
+    <string name="minutes">" minuti e "</string>
+    <string name="seconds">" secondi "</string>
+
+
+    <!-- SETTING -->
+    <string name="message_clear_db">"Confermare l'eliminazione di tutti i dati dal database?"</string>
+    <string name="title_clear_db">"Conferma Eliminazione"</string>
+    <string name="confirm">"Conferma"</string>
+    <string name="messsage_background_always">"Impostare l'accesso alla posizione in background a 'Consenti sempre'"</string>
+
+
+    <!-- SETTING LAYOUT -->
+    <string name="option_text">"OPZIONI"</string>
+    <string name="permission_text">"Permessi"</string>
+    <string name="permission_text_position">"Consentire l'accesso alla posizione"</string>
+    <string name="permission_text_lte">"Consentire l'accesso alla rete LTE"</string>
+    <string name="permission_text_wifi">"Consentire l'accesso alla rete Wifi"</string>
+    <string name="permission_text_microphone">"Consentire l'accesso al microfono"</string>
+    <string name="permission_text_notification">"Consentire l'accesso alle notifiche"</string>
+
+    <string name="measurement_text">"Misurazioni"</string>
+    <string name="measurement_text_delay">"Selezionare un intervallo di tempo \ntra le misurazioni"</string>
+    <string name="measurement_text_average">"Seleziona quanti degli ultimi valori \nutilizzare per calcolare la media \nper ogni casella."</string>
+    <string name="backgroundMeasure_text">"Consentire l'accesso alle misurazioni \nin background"</string>
+
+    <string name="map_text">"Mappa"</string>
+    <string name="map_normal">"Normale"</string>
+    <string name="map_text_select">"Selezionare una tipologia di mappa"</string>
+    <string name="background_text">"Misurazioni in background"</string>
+    <string name="permission_text_background">"Consentire l'accesso alla localizzazione \nin background"</string>
+    <string name="database_text_clear">"Svuotare il database?"</string>
+    <string name="button_text_empty">"Svuota"</string>
+
+
+    <!-- NOTIFICATION -->
+    <string name="notification_title">"Misurazione in background"</string>
+    <string name="notification_empty_lte">"Sei entrato in una zona non ancora misurata con il sengale LTE. Aggiorna la tua mappa!"</string>
+    <string name="notification_empty_wifi">"Sei entrato in una zona non ancora misurata con il segnale WiFi. Aggiorna la tua mappa!"</string>
+    <string name="notification_empty_noise">"Sei entrato in una zona non ancora misurata con il rumore. Aggiorna la tua mappa!"</string>
+
+
+    <!-- BOTTOM LIST -->
+    <string name="bottom_title">Lista delle misurazioni per la\nzona selezionata</string>
+    <string name="bottom_subtitle">Tieni premuta una misurazione per eliminarla</string>
+    <string name="bottom_nomeasure">Nessuna misurazione per quest\'area</string>
+    <string name="bottom_dialog_text">Vuoi eliminare questa misurazione dal tuo database?</string>
+    <string name="bottom_dialog_title">Elimina misurazione</string>
+
+
+    <string name="noise_button">"RUMORE"</string>
+    <string name="wifi_button">"WIFI"</string>
+    <string name="lte_button">"LTE"</string>
+
+    <string name="lte">"LTE"</string>
+    <string name="wifi">"WiFi"</string>
+    <string name="noise">"Rumore"</string>
+
+
+
+</resources>

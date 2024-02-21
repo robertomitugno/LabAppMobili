@@ -11,22 +11,28 @@
     <!-- permesso per accesso alla posizione -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- permesso per accesso alla rete wifi -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".ActivityMonitor"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/app_image"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/app_image"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:targetApi="31">
+
 
         <activity android:label="@string/app_name" android:name=".OptionsActivity"/>
 
@@ -46,11 +52,8 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/my_app_api_key" />
 
-        <!-- <service android:name=".AppUsageService"
-             android:enabled="true"
-             android:exported="true" />
- -->
 
-     </application>
+    </application>
+
 
  </manifest>

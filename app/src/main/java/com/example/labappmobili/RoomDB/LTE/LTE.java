@@ -5,34 +5,43 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-@Entity (tableName = "LteDB")
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+@Entity(tableName = "LteDB")
 public class LTE {
 
-    @ColumnInfo (name = "Latitudine")
+    @ColumnInfo(name = "Latitudine")
     private double Latitudine;
 
-    @ColumnInfo (name = "Id")
-    @PrimaryKey (autoGenerate = true)
+    @ColumnInfo(name = "Id")
+    @PrimaryKey(autoGenerate = true)
     private int Id;
 
-    @ColumnInfo (name = "Longitudine")
+    @ColumnInfo(name = "Longitudine")
     private double Longitudine;
 
-    @ColumnInfo (name = "LteValue")
+    @ColumnInfo(name = "LteValue")
     private int LteValue;
 
-    public LTE(double Latitudine, int Id, double Longitudine, int LteValue) {
+    @ColumnInfo(name = "Date")
+    private long Date;
+
+    public LTE(double Latitudine, int Id, double Longitudine, int LteValue, long Date) {
         this.Latitudine = Latitudine;
         this.Id = Id;
         this.Longitudine = Longitudine;
         this.LteValue = LteValue;
+        this.Date = Date;
     }
 
     @Ignore
-    public LTE(double Latitudine, double Longitudine, int LteValue) {
+    public LTE(double Latitudine, double Longitudine, int LteValue, long Date) {
         this.Latitudine = Latitudine;
         this.Longitudine = Longitudine;
         this.LteValue = LteValue;
+        this.Date = Date;
     }
 
     public int getLteValue() {
@@ -43,21 +52,24 @@ public class LTE {
         return Latitudine;
     }
 
+    @Override
+    public String toString() {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault());
+        String formattedDate = sdf.format(new Date(Date));
+
+        return "Date: " + formattedDate + "\n" +
+                "LTE Value: " + LteValue;
+    }
+
     public int getId() {
         return Id;
     }
 
+    public long getDate() {
+        return Date;
+    }
 
     public double getLongitudine() {
         return Longitudine;
-    }
-
-    @Override
-    public String toString() {
-        return "LTE{" +
-                "Latitudine=" + Latitudine +
-                ", Longitudine=" + Longitudine +
-                ", LteValue=" + LteValue +
-                '}';
     }
 }

@@ -1,13 +1,17 @@
 package com.example.labappmobili;
 
 
+import static com.example.labappmobili.MainActivity.BACKGROUND_PERMISSION;
 import static com.example.labappmobili.MainActivity.FINE_LOCATION_PERMISSION;
 import static com.example.labappmobili.MainActivity.NOTIFICATION_PERMISSION;
+import static com.example.labappmobili.MainActivity.PERMISSION_BACKGROUND_CODE;
 import static com.example.labappmobili.MainActivity.PERMISSION_LOCATION_CODE;
 
 import static com.example.labappmobili.MainActivity.PERMISSION_NOTIFICATION_CODE;
 import static com.example.labappmobili.MainActivity.RECORD_AUDIO_PERMISSION;
 import static com.example.labappmobili.MainActivity.PERMISSION_AUDIO_CODE;
+import static com.example.labappmobili.MainActivity.isLteEnabled;
+import static com.example.labappmobili.MainActivity.isWifiEnabled;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -15,7 +19,6 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -23,7 +26,6 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.Switch;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -44,19 +46,19 @@ import java.util.concurrent.Executors;
 
 public class OptionsActivity extends AppCompatActivity {
 
-    private Switch switchLocation, switchLte, switchWifi, switchNoise, switchNotification;
-    private TextView textClear, textMisurazioni;
+    private Switch switchLocation, switchLte, switchWifi, switchNoise, switchNotification, switchBackground, switchBackgroundMeasure;
     private ImageButton imageButton;
     private Button buttonClear;
 
+    boolean isBackgroundMeasureEnabled = false;
+
     ExecutorService executorService = Executors.newSingleThreadExecutor();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.options_layout);
-
-        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
 
         // Inizializza gli elementi UI
         switchLocation = findViewById(R.id.switchLocation);
@@ -64,19 +66,23 @@ public class OptionsActivity extends AppCompatActivity {
 
         switchNotification = findViewById(R.id.switchNotification);
 
+        switchBackground = findViewById(R.id.switchBackground);
+
         switchLte = findViewById(R.id.switchLte);
         switchWifi = findViewById(R.id.switchWifi);
-        textClear = findViewById(R.id.textClear);
         buttonClear = findViewById(R.id.buttonClear);
         imageButton = findViewById(R.id.imageButton);
-        textMisurazioni = findViewById(R.id.textMisurazioni);
+        switchBackgroundMeasure = findViewById(R.id.switchBackgroundMeasure);
+
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
 
         checkSwitchLocation();
         checkSwitchAudio();
         checkSwitchNotification();
         checkSwitchWifi();
         checkSwitchLte();
-
+        checkSwitchBackground();
+        checkSwitchBackgroundMeasure();
 
         // Gestisci il cambio di stato degli interruttori
         switchLocation.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -84,17 +90,17 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimeLocation();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_position)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -104,15 +110,15 @@ public class OptionsActivity extends AppCompatActivity {
         switchLte.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 // Abilita l'accesso alla rete WiFi
-                MainActivity.isLteEnabled = true;
+                isLteEnabled = true;
             } else {
                 // Disabilita l'accesso alla rete WiFi
-                MainActivity.isLteEnabled = false;
+                isLteEnabled = false;
             }
 
             // Salva lo stato nello SharedPreferences
             SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean("isLteEnabled", MainActivity.isLteEnabled);
+            editor.putBoolean("isLteEnabled", isLteEnabled);
             editor.apply();
             checkSwitchLte();
         });
@@ -139,17 +145,17 @@ public class OptionsActivity extends AppCompatActivity {
                 requestRuntimeAudio();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per il microfono per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_microphone)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
@@ -158,24 +164,46 @@ public class OptionsActivity extends AppCompatActivity {
 
         switchNotification.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
-                requestRuntimeNotification();
+                requestRuntimePermissionNotification();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
-                        .setTitle("Permission Required")
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
                         .setCancelable(false)
-                        .setPositiveButton("Settings", (dialog, which) -> {
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                            startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
+
+                builder.show();
+            }
+            checkSwitchNotification();
+        });
+
+
+        switchBackground.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                requestRuntimePermissionBackground();
+            } else {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.message_background)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             Uri uri = Uri.fromParts("package", getPackageName(), null);
                             intent.setData(uri);
                             startActivity(intent);
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
                 builder.show();
             }
-            checkSwitchNotification();
+            checkSwitchBackground();
         });
 
 
@@ -193,7 +221,7 @@ public class OptionsActivity extends AppCompatActivity {
         buttonClear.setOnClickListener(v -> clearAllDatabases());
 
         Spinner selectSpinner = findViewById(R.id.select);
-        String[] options = {"5s", "10s", "30s", "1m"};
+        String[] options = {"1m", "5m", "10m", "5s"};
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, options);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -225,16 +253,49 @@ public class OptionsActivity extends AppCompatActivity {
 
 
 
+        Spinner selectAvg = findViewById(R.id.selectAvg);
+        Integer[] avg = { 5, 10, 30};
+
+        ArrayAdapter<Integer> adapterAvg = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, avg);
+        adapterAvg.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        selectAvg.setAdapter(adapterAvg);
+
+
+        // Ottieni la preferenza corrente dell'utente
+        SharedPreferences preferencesSpinnerAvg = getSharedPreferences("PrefAvg", MODE_PRIVATE);
+        int measurementIntervalAvg = preferencesSpinnerAvg.getInt("averageValue", 5); // Imposta un valore di default, ad esempio "5s"
+
+        // Trova l'indice della preferenza corrente e imposta lo spinner
+        int selectedIndexAvg = Arrays.asList(avg).indexOf(measurementIntervalAvg);
+        selectAvg.setSelection(selectedIndexAvg);
+
+        selectAvg.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                int selectedAverage = avg[position];
+                SharedPreferences.Editor editor = preferencesSpinnerAvg.edit();
+                editor.putInt("averageValue", selectedAverage);
+                editor.apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                // Do nothing here
+            }
+        });
+
+
+
 
         Spinner selectMapSpinner = findViewById(R.id.selectMap);
-        String[] mapOptions = {"Normal", "Satellite"};
+        String[] mapOptions = {this.getResources().getString(R.string.map_normal), "Satellite"};
 
         ArrayAdapter<String> mapAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mapOptions);
         mapAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         selectMapSpinner.setAdapter(mapAdapter);
 
         // Ottieni la preferenza corrente dell'utente per il tipo di mappa
-        SharedPreferences preferencesMap = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        SharedPreferences preferencesMap = getSharedPreferences("PrefMap", MODE_PRIVATE);
         String selectedMapType = preferencesMap.getString("selectedMapType", "Normal"); // Imposta un valore di default, ad esempio "Normale"
 
         // Trova l'indice della preferenza corrente e imposta lo spinner
@@ -256,65 +317,116 @@ public class OptionsActivity extends AppCompatActivity {
                 // Do nothing here
             }
         });
+
+
+
+        switchBackgroundMeasure.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                // Abilita l'accesso alla rete WiFi
+                isBackgroundMeasureEnabled = true;
+            } else {
+                // Disabilita l'accesso alla rete WiFi
+                isBackgroundMeasureEnabled = false;
+            }
+
+            // Salva lo stato nello SharedPreferences
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("isBackgroundMeasureEnabled", isBackgroundMeasureEnabled);
+            editor.apply();
+            checkSwitchBackgroundMeasure();
+        });
+
     }
 
 
 
-    private void requestRuntimeNotification() {
-        if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            // Il permesso è già concesso, puoi procedere con le notifiche
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
+    private void requestRuntimePermissionNotification() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, NOTIFICATION_PERMISSION)) {
+            // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_notifications)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
+                    .setPositiveButton(R.string.setting, (dialog, which) -> {
+                        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
                         startActivity(intent);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                        dialog.dismiss();
+                    });
 
             builder.show();
+        } else {
 
+            if (ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_DENIED) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.message_notifications)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.setting, (dialog, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                                intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                                startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                            dialog.dismiss();
+                        });
+
+                builder.show();
+            }
+
+            //ActivityCompat.requestPermissions(this, new String[]{NOTIFICATION_PERMISSION}, PERMISSION_NOTIFICATION_CODE);
+        }
+    }
+
+
+
+    private void requestRuntimePermissionBackground() {
+        if (ActivityCompat.checkSelfPermission(this, FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, BACKGROUND_PERMISSION)) {
+                // Spiega l'importanza dell'autorizzazione all'utente
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.message_background)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton("Ok", (dialog, which) -> {
+                            ActivityCompat.requestPermissions(this, new String[]{BACKGROUND_PERMISSION},
+                                    PERMISSION_BACKGROUND_CODE);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                            dialog.dismiss();
+                        });
+
+                builder.show();
+            } else {
+                // Richiedi l'autorizzazione
+                ActivityCompat.requestPermissions(this, new String[]{BACKGROUND_PERMISSION}, PERMISSION_BACKGROUND_CODE);
+            }
 
         } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per il notifiche per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-            builder.show();
+            requestRuntimeLocation();
         }
-        checkSwitchNotification();
     }
 
 
     private void requestRuntimeAudio() {
-        if (ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, RECORD_AUDIO_PERMISSION)) {
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede il permesso per il microfono per rilevare il rumore circostante.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_microphone)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
                     .setPositiveButton("Ok", (dialog, which) -> {
                         ActivityCompat.requestPermissions(this, new String[]{RECORD_AUDIO_PERMISSION},
                                 PERMISSION_AUDIO_CODE);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", ((dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(R.string.cancel, ((dialog, which) -> dialog.dismiss())
                     );
 
             builder.show();
@@ -324,130 +436,124 @@ public class OptionsActivity extends AppCompatActivity {
 
     }
 
-    private void requestRuntimeLocation() {
-        if (ActivityCompat.checkSelfPermission(this, MainActivity.FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
-            // Richiedi l'autorizzazione
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
-            builder.show();
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
+    private void requestRuntimeLocation() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, FINE_LOCATION_PERMISSION)) {
             // Spiega l'importanza dell'autorizzazione all'utente
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
+            builder.setMessage(R.string.message_position)
+                    .setTitle(R.string.permission_required)
                     .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
+                    .setPositiveButton(R.string.setting, (dialog, which) -> {
                         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                         Uri uri = Uri.fromParts("package", getPackageName(), null);
                         intent.setData(uri);
                         startActivity(intent);
                         dialog.dismiss();
                     })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
 
             builder.show();
 
         } else {
             // Richiedi l'autorizzazione
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Questa app richiede l'autorizzazione per la posizione per mostrare le funzionalità.")
-                    .setTitle("Permission Required")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getPackageName(), null);
-                        intent.setData(uri);
-                        startActivity(intent);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            ActivityCompat.requestPermissions(this, new String[]{FINE_LOCATION_PERMISSION}, PERMISSION_LOCATION_CODE);
 
-            builder.show();
         }
     }
 
+
     private void checkSwitchLocation(){
 
-        TextView textLocation = findViewById(R.id.textLocation);
         if(ActivityCompat.checkSelfPermission(this, FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchLocation.setChecked(true);
-            textLocation.setTextColor(getResources().getColor(R.color.purple_200));
         } else {
             switchLocation.setChecked(false);
-            textLocation.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchAudio() {
-        TextView textNoise = findViewById(R.id.textNoise);
         if(ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchNoise.setChecked(true);
-            textNoise.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchNoise.setChecked(false);
-            textNoise.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchNotification() {
-        TextView textNotification = findViewById(R.id.textNotification);
         if(ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchNotification.setChecked(true);
-            textNotification.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchNotification.setChecked(false);
-            textNotification.setTextColor(getResources().getColor(R.color.black));
+        }
+    }
+
+    private void checkSwitchBackground() {
+        if(ActivityCompat.checkSelfPermission(this, BACKGROUND_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+            switchBackground.setChecked(true);
+        }else {
+            switchBackground.setChecked(false);
+        }
+    }
+
+    private void checkSwitchBackgroundMeasure() {
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isBackgroundMeasureEnabled = preferences.getBoolean("isBackgroundMeasureEnabled",false);
+        if(isBackgroundMeasureEnabled) {
+            switchBackgroundMeasure.setChecked(true);
+        }else {
+            switchBackgroundMeasure.setChecked(false);
         }
     }
 
     private void checkSwitchWifi() {
-        TextView textWifi = findViewById(R.id.textWifi);
-        if(MainActivity.isWifiEnabled) {
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isWifiEnabled = preferences.getBoolean("isWifiEnabled",true);
+        if(isWifiEnabled) {
             switchWifi.setChecked(true);
-            textWifi.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchWifi.setChecked(false);
-            textWifi.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchLte() {
-        TextView textLte = findViewById(R.id.textLte);
-        if(MainActivity.isLteEnabled) {
+        SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        isLteEnabled = preferences.getBoolean("isLteEnabled",true);
+        if(isLteEnabled) {
             switchLte.setChecked(true);
-            textLte.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchLte.setChecked(false);
-            textLte.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void clearAllDatabases() {
-        executorService.execute(() -> {
-            LTEDB ltedb = Room.databaseBuilder(OptionsActivity.this, LTEDB.class, "LteDB").build();
-            LTEDao lteDao = ltedb.getLTEDao();
-            lteDao.deleteAllLTE();
+        // Creare un AlertDialog per chiedere conferma
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.message_clear_db)
+                .setTitle(R.string.title_clear_db)
+                .setCancelable(false)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    // Conferma selezionata, procedere con l'eliminazione
+                    executorService.execute(() -> {
+                        LTEDB ltedb = Room.databaseBuilder(OptionsActivity.this, LTEDB.class, "LteDB").build();
+                        LTEDao lteDao = ltedb.getLTEDao();
+                        lteDao.deleteAllLTE();
 
-            WiFiDB wiFiDB = Room.databaseBuilder(OptionsActivity.this, WiFiDB.class, "WifiDatabase").build();
-            WiFiDao wiFiDao = wiFiDB.getWiFiDao();
-            wiFiDao.deleteAllWifi();
+                        WiFiDB wiFiDB = Room.databaseBuilder(OptionsActivity.this, WiFiDB.class, "WifiDatabase").build();
+                        WiFiDao wiFiDao = wiFiDB.getWiFiDao();
+                        wiFiDao.deleteAllWifi();
 
-            NoiseDB noiseDB = Room.databaseBuilder(OptionsActivity.this, NoiseDB.class, "NoiseDB").build();
-            NoiseDao noiseDao = noiseDB.getNoiseDao();
-            noiseDao.deleteAllNoise();
-        });
+                        NoiseDB noiseDB = Room.databaseBuilder(OptionsActivity.this, NoiseDB.class, "NoiseDB").build();
+                        NoiseDao noiseDao = noiseDB.getNoiseDao();
+                        noiseDao.deleteAllNoise();
+                    });
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
+
+        builder.show();
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -455,24 +561,29 @@ public class OptionsActivity extends AppCompatActivity {
 
         // Aggiungi questo controllo per il permesso di posizione
         if (requestCode == PERMISSION_LOCATION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permesso di posizione concessa
-                checkSwitchLocation();
-            } else {
-                checkSwitchLocation();
-            }
+            checkSwitchLocation();
         }else if (requestCode == PERMISSION_AUDIO_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkSwitchAudio();
-            } else {
-                checkSwitchAudio();
-            }
+            checkSwitchAudio();
         } else if(requestCode == PERMISSION_NOTIFICATION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkSwitchNotification();
-            } else {
-                checkSwitchNotification();
+            checkSwitchNotification();
+        } else if(requestCode == PERMISSION_BACKGROUND_CODE) {
+            if (ActivityCompat.checkSelfPermission(this, BACKGROUND_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.messsage_background_always)
+                        .setTitle(R.string.permission_required)
+                        .setCancelable(false)
+                        .setPositiveButton("Ok", (dialog, which) -> {
+                            ActivityCompat.requestPermissions(this, new String[]{BACKGROUND_PERMISSION},
+                                    PERMISSION_BACKGROUND_CODE);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                            dialog.dismiss();
+                        });
+
+                builder.show();
             }
+            checkSwitchBackground();
         }
     }
 
