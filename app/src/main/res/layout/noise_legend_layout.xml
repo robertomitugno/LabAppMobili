@@ -26,8 +26,9 @@
             android:id="@+id/valueRed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="20 dB"
+            android:text="30 dB"
             android:textColor="@color/black"
+            android:layout_marginTop="12dp"
             android:textSize="8dp"
             app:layout_constraintStart_toEndOf="@+id/view"
             app:layout_constraintTop_toTopOf="parent" />
@@ -40,17 +41,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/view" />
 
-
-        <TextView
-            android:id="@+id/valueYellow"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="30 dB"
-            android:textColor="@color/black"
-            android:textSize="8dp"
-            app:layout_constraintStart_toEndOf="@+id/view2"
-            app:layout_constraintTop_toBottomOf="@+id/valueRed" />
 
         <View
             android:id="@+id/view3"
@@ -65,18 +55,18 @@
             android:id="@+id/valueGreen"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:text="50 dB"
             android:textColor="@color/black"
+            android:layout_marginTop="22dp"
             android:textSize="8dp"
             app:layout_constraintStart_toEndOf="@+id/view2"
-            app:layout_constraintTop_toBottomOf="@+id/valueYellow" />
+            app:layout_constraintTop_toBottomOf="@+id/valueRed" />
 
         <TextView
             android:id="@+id/valueNotFound"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="24dp"
             android:text="N/A"
             android:textColor="@color/black"
             android:textSize="8dp"

@@ -3,7 +3,6 @@ package com.example.labappmobili;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
-import android.util.Log;
 
 public class ActivityMonitor extends Application {
 

@@ -26,7 +26,6 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.Switch;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -466,85 +465,64 @@ public class OptionsActivity extends AppCompatActivity {
 
     private void checkSwitchLocation(){
 
-        TextView textLocation = findViewById(R.id.textLocation);
         if(ActivityCompat.checkSelfPermission(this, FINE_LOCATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchLocation.setChecked(true);
-            textLocation.setTextColor(getResources().getColor(R.color.purple_200));
         } else {
             switchLocation.setChecked(false);
-            textLocation.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchAudio() {
-        TextView textNoise = findViewById(R.id.textNoise);
         if(ActivityCompat.checkSelfPermission(this, RECORD_AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchNoise.setChecked(true);
-            textNoise.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchNoise.setChecked(false);
-            textNoise.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchNotification() {
-        TextView textNotification = findViewById(R.id.textNotification);
         if(ActivityCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchNotification.setChecked(true);
-            textNotification.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchNotification.setChecked(false);
-            textNotification.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchBackground() {
-        TextView textBackground = findViewById(R.id.textSwitchBackground);
         if(ActivityCompat.checkSelfPermission(this, BACKGROUND_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
             switchBackground.setChecked(true);
-            textBackground.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchBackground.setChecked(false);
-            textBackground.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchBackgroundMeasure() {
-        TextView textBackground = findViewById(R.id.textBackgroundMeasure);
         SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         isBackgroundMeasureEnabled = preferences.getBoolean("isBackgroundMeasureEnabled",false);
         if(isBackgroundMeasureEnabled) {
             switchBackgroundMeasure.setChecked(true);
-            textBackground.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchBackgroundMeasure.setChecked(false);
-            textBackground.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchWifi() {
-        TextView textWifi = findViewById(R.id.textWifi);
         SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         isWifiEnabled = preferences.getBoolean("isWifiEnabled",true);
         if(isWifiEnabled) {
             switchWifi.setChecked(true);
-            textWifi.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchWifi.setChecked(false);
-            textWifi.setTextColor(getResources().getColor(R.color.black));
         }
     }
 
     private void checkSwitchLte() {
-        TextView textLte = findViewById(R.id.textLte);
         SharedPreferences preferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
         isLteEnabled = preferences.getBoolean("isLteEnabled",true);
         if(isLteEnabled) {
             switchLte.setChecked(true);
-            textLte.setTextColor(getResources().getColor(R.color.purple_200));
         }else {
             switchLte.setChecked(false);
-            textLte.setTextColor(getResources().getColor(R.color.black));
         }
     }
 

@@ -1,7 +1,7 @@
 package com.example.labappmobili;
 
-import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
-import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+import static com.example.labappmobili.GridTileProvider.latitudineInMeters;
+import static com.example.labappmobili.GridTileProvider.longitudineInMeters;
 
 import android.app.Activity;
 import android.content.Context;
@@ -16,8 +16,6 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.room.Room;
 
-import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.Noise.Noise;
 import com.example.labappmobili.RoomDB.Noise.NoiseDB;
 import com.example.labappmobili.RoomDB.Noise.NoiseDao;
@@ -127,8 +125,8 @@ public class NoiseSignalManager {
 
         double noiseLevel = getNoiseLevel();
 
-        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        double latitudine = latitudineInMeters(currentLocation.getLatitude());
+        double longitudine = longitudineInMeters(currentLocation.getLongitude());
 
         GridTileProvider gridTileProvider = new GridTileProvider(context, getAllNoiseValue());
 

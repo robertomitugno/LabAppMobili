@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">GeoSignal</string>
-    <string name="my_app_api_key">AIzaSyCfZDSzDqILz9We8NqjIQGUV4gq3MZbjko</string>
+    <string name="my_app_api_key"></string>
 
-    <string name="variableText_default">"Select a measurement.."</string>
+    <string name="variableText_default">"Select a signal.."</string>
 
     <!-- TOAST MESSAGE -->
     <string name="select_measure">"Select a measurement type"</string>

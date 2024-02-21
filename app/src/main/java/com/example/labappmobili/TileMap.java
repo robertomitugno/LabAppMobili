@@ -1,17 +1,14 @@
 package com.example.labappmobili;
 
-import androidx.annotation.NonNull;
-
-import java.util.Date;
 import java.util.Objects;
 
-public class TileDataInfo {
+public class TileMap {
     int tileX;
     int tileY;
     int tileZoom;
     long lastDateTime;
 
-    public TileDataInfo(int tileX, int tileY, int tileZoom, long lastDateTime) {
+    public TileMap(int tileX, int tileY, int tileZoom, long lastDateTime) {
         this.tileX = tileX;
         this.tileY = tileY;
         this.tileZoom = tileZoom;
@@ -49,7 +46,7 @@ public class TileDataInfo {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        TileDataInfo that = (TileDataInfo) o;
+        TileMap that = (TileMap) o;
         return tileX == that.tileX && tileY == that.tileY && tileZoom == that.tileZoom;
     }
 

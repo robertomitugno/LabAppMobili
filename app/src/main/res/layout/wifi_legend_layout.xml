@@ -26,6 +26,7 @@
             android:id="@+id/valueRed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:text="50 Mb/s"
             android:textColor="@color/black"
             android:textSize="8dp"
@@ -45,7 +46,7 @@
             android:id="@+id/valueYellow"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="22dp"
             android:text="30 Mb/s"
             android:textColor="@color/black"
             android:textSize="8dp"
@@ -62,26 +63,15 @@
 
 
         <TextView
-            android:id="@+id/valueGreen"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="20 Mb/s"
-            android:textColor="@color/black"
-            android:textSize="8dp"
-            app:layout_constraintStart_toEndOf="@+id/view2"
-            app:layout_constraintTop_toBottomOf="@+id/valueYellow" />
-
-        <TextView
             android:id="@+id/valueNotFound"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="26dp"
             android:text="N/A"
             android:textColor="@color/black"
             android:textSize="8dp"
             app:layout_constraintStart_toEndOf="@+id/view2"
-            app:layout_constraintTop_toBottomOf="@+id/valueGreen" />
+            app:layout_constraintTop_toBottomOf="@+id/valueYellow" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

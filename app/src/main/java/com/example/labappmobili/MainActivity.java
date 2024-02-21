@@ -1,8 +1,8 @@
 package com.example.labappmobili;
 
 
-import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
-import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+import static com.example.labappmobili.GridTileProvider.latitudineInMeters;
+import static com.example.labappmobili.GridTileProvider.longitudineInMeters;
 import static com.example.labappmobili.LteSignalManager.deleteLTEMeasurement;
 import static com.example.labappmobili.LteSignalManager.showLteMap;
 import static com.example.labappmobili.NoiseSignalManager.deleteNoiseMeasurement;
@@ -103,10 +103,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     Button startMeasure;
 
-    // Dichiarazione del tuo handler
     private final Handler handler = new Handler();
 
-    // Dichiarazione della tua variabile per l'intervallo di tempo
     static String measurementInterval = "5s";  // Default a 5 secondi
 
     float currentZoom;
@@ -174,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         CheckBox.OnCheckedChangeListener checkBoxListener = (buttonView, isChecked) -> {
 
             if (isChecked) {
-                    // Aggiungi le azioni da eseguire quando un CheckBox viene selezionato
+                // Aggiungi le azioni da eseguire quando un CheckBox viene selezionato
                 int checkBoxId = buttonView.getId();
 
                 if (checkBoxId == R.id.lteCheckBox) {
@@ -317,7 +315,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     void updateWifiLevel(){
-        // Chiamata al metodo updateLteLevel()
         if(currentLocation != null) {
             WifiSignalManager wifiSignalManager = new WifiSignalManager(MainActivity.this, currentLocation, myMap);
             showToast(WifiSignalManager.insertWifiMeasurement(currentLocation, getIntervalInMillis(measurementInterval)));
@@ -588,7 +585,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Aggiungi l'ascoltatore di tocco per il tocco di lunga durata
         myMap.setOnMapLongClickListener(latLng -> {
             if(showLte || showWifi || showNoise)
-                showObjectListDialog(inMetersLatCoordinate(latLng.latitude), inMetersLngCoordinate(latLng.longitude));
+                showObjectListDialog(latitudineInMeters(latLng.latitude), longitudineInMeters(latLng.longitude));
         });
 
         // Posiziona la mappa sulla posizione corrente

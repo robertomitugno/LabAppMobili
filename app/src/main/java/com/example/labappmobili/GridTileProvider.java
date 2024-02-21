@@ -25,15 +25,14 @@ import java.util.concurrent.TimeUnit;
 
 public class GridTileProvider implements TileProvider {
 
-    private static final int TILE_SIZE_DP = 256;
-    private Bitmap borderTile;
+    private static final int sizeTile = 256;
+    private Bitmap bitmap;
 
-    private static final double[] TILES_ORIGIN = {-20037508.34789244, 20037508.34789244};
-    // Size of square world map in meters, using WebMerc projection.
-    private static final double MAP_SIZE = 20037508.34789244 * 2;
-    private static final double ORIGIN_SHIFT = Math.PI * 6378137d;
+    private static final double[] MapCoordinates = {-20037508.34789244, 20037508.34789244};
+    private static final double MapSize = 20037508.34789244 * 2;
+    private static final double OriginShift = Math.PI * 6378137d;
     private static final int gridSize = 6;
-    private float scaleFactor;
+    private float densityScaleFactor;
     private static List<?> listMeasureSelect;
 
     Context context;
@@ -43,9 +42,9 @@ public class GridTileProvider implements TileProvider {
     // Per inizio misurazione
     public GridTileProvider(Context context, List<?> listMeasureSelect) {
         this.context = context;
-        scaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
-        borderTile = Bitmap.createBitmap((int) (TILE_SIZE_DP * scaleFactor),
-                (int) (TILE_SIZE_DP * scaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
+        densityScaleFactor = context.getResources().getDisplayMetrics().density * 0.6f;
+        bitmap = Bitmap.createBitmap((int) (sizeTile * densityScaleFactor),
+                (int) (sizeTile * densityScaleFactor), android.graphics.Bitmap.Config.ARGB_8888);
         this.listMeasureSelect = listMeasureSelect;
     }
 
@@ -58,7 +57,7 @@ public class GridTileProvider implements TileProvider {
         this.zoom = zoom;
 
         if (coordTile != null) {
-            return new Tile((int) (TILE_SIZE_DP), (int) (TILE_SIZE_DP), toByteArray(coordTile));
+            return new Tile((int) (sizeTile), (int) (sizeTile), toByteArray(coordTile));
         }
 
         return NO_TILE;
@@ -74,29 +73,29 @@ public class GridTileProvider implements TileProvider {
 
         if (location != null) {
 
-            double convertedLat = inMetersLatCoordinate(location.getLatitude());
-            double convertedLng = inMetersLngCoordinate(location.getLongitude());
-            TileDataInfo locationTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, 10, 0);
+            double convertedLat = latitudineInMeters(location.getLatitude());
+            double convertedLng = longitudineInMeters(location.getLongitude());
+            TileMap locationTile = GridTileProvider.getSubtile(convertedLng, convertedLat, 10, 0);
 
 
             for (Object object : lista) {
                 if (object instanceof LTE) {
 
                     LTE lteItem = (LTE) object; // Cast esplicito a LTE
-                    TileDataInfo actualLteTile = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), 10, 0);
+                    TileMap actualLteTile = GridTileProvider.getSubtile(lteItem.getLongitudine(), lteItem.getLatitudine(), 10, 0);
                     if (locationTile.equals(actualLteTile)) {
                         return false;
                     }
                 } else if (object instanceof WiFi) {
                     WiFi wifiItem = (WiFi) object;
-                    TileDataInfo actualWifiTile = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 10, 0);
+                    TileMap actualWifiTile = GridTileProvider.getSubtile(wifiItem.getLongitudine(), wifiItem.getLatitudine(), 10, 0);
 
                     if (actualWifiTile.equals(locationTile)) {
                         return false;
                     }
                 } else if (object instanceof Noise) {
                     Noise noiseItem = (Noise) object;
-                    TileDataInfo actualNoiseTile = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 10, 0);
+                    TileMap actualNoiseTile = GridTileProvider.getSubtile(noiseItem.getLongitudine(), noiseItem.getLatitudine(), 10, 0);
 
                     if (actualNoiseTile.equals(locationTile)) {
                         return false;
@@ -113,16 +112,16 @@ public class GridTileProvider implements TileProvider {
     public Bitmap drawGridTile(int x, int y, int zoom) {
 
         Bitmap copy;
-        synchronized (borderTile) {
-            copy = borderTile.copy(Bitmap.Config.ARGB_8888, true);
+        synchronized (bitmap) {
+            copy = bitmap.copy(Bitmap.Config.ARGB_8888, true);
         }
 
         Canvas canvas = new Canvas(copy);
-        int tileSize = (int) (TILE_SIZE_DP * scaleFactor);
+        int tileSize = (int) (sizeTile * densityScaleFactor);
         int cellSize = tileSize / gridSize;
         Paint mTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mTextPaint.setTextAlign(Paint.Align.CENTER);
-        mTextPaint.setTextSize(18 * scaleFactor);
+        mTextPaint.setTextSize(18 * densityScaleFactor);
 
         // in every Tile, create a Grid [gridSize:gridSize]
         int zoomMin = 3;
@@ -136,26 +135,26 @@ public class GridTileProvider implements TileProvider {
                     int ySubCell = y * gridSize + row;
 
                     //tile da disegnare
-                    TileDataInfo actualTile = new TileDataInfo(xSubCell, ySubCell, zoom, 0);
+                    TileMap actualTile = new TileMap(xSubCell, ySubCell, zoom, 0);
 
                     List<Object> cellValues = new ArrayList<>();
 
                     for (Object item : listMeasureSelect) { // Itera sulla lista
                         if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
                             LTE lteItem = (LTE) item; // Cast esplicito a LTE
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
+                            TileMap tileFound = GridTileProvider.getSubtile(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
                                 cellValues.add(lteItem);
                             }
                         } else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
                             WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+                            TileMap tileFound = GridTileProvider.getSubtile(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
                                 cellValues.add(wifiItem);
                             }
                         } else if (item instanceof Noise) {
                             Noise noiseItem = (Noise) item;
-                            TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
+                            TileMap tileFound = GridTileProvider.getSubtile(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
                             if (actualTile.equals(tileFound)) {
                                 cellValues.add(noiseItem);
                             }
@@ -227,15 +226,15 @@ public class GridTileProvider implements TileProvider {
 
         Date date = new Date();
 
-        double convertedLat = inMetersLatCoordinate(currentLocation.getLatitude());
-        double convertedLng = inMetersLngCoordinate(currentLocation.getLongitude());
-        TileDataInfo myTile = GridTileProvider.getSubTileByCoordinate(convertedLng, convertedLat, zoom, 0);
+        double convertedLat = latitudineInMeters(currentLocation.getLatitude());
+        double convertedLng = longitudineInMeters(currentLocation.getLongitude());
+        TileMap myTile = GridTileProvider.getSubtile(convertedLng, convertedLat, zoom, 0);
 
         for (Object item : listMeasureSelect) { // Itera sulla lista
 
             if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
                 LTE lteItem = (LTE) item; // Cast esplicito a LTE
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
                 if (myTile.equals(tileFound)) {
                     if((date.getTime() - lteItem.getDate()) < time){
                         return formatRemainingTime(time, date.getTime() - ((LTE) item).getDate());
@@ -246,7 +245,7 @@ public class GridTileProvider implements TileProvider {
             else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
 
                 WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
 
                 if (myTile.equals(tileFound)) {
                     if((date.getTime() - wifiItem.getDate()) < time){
@@ -257,7 +256,7 @@ public class GridTileProvider implements TileProvider {
 
             else if (item instanceof Noise) {
                 Noise noiseItem = (Noise) item;
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
                 if (myTile.equals(tileFound)) {
                     if((date.getTime() - noiseItem.getDate()) < time){
                         return formatRemainingTime(time, date.getTime() - ((Noise) item).getDate());
@@ -286,14 +285,14 @@ public class GridTileProvider implements TileProvider {
 
     public static List<?> getListMapTouch(double latitudine, double longitudine){
 
-        TileDataInfo myTile = GridTileProvider.getSubTileByCoordinate(longitudine, latitudine, zoom, 0);
+        TileMap myTile = GridTileProvider.getSubtile(longitudine, latitudine, zoom, 0);
 
         List<Object> listMapTouch = new ArrayList<>();
         for (Object item : listMeasureSelect) { // Itera sulla lista
             if (item instanceof LTE) { // Controlla se l'oggetto è di tipo LTE
 
                 LTE lteItem = (LTE) item; // Cast esplicito a LTE
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(lteItem.getLongitudine(), lteItem.getLatitudine(), zoom, 0);
 
                 if (myTile.equals(tileFound)) {
                     listMapTouch.add(lteItem);
@@ -303,7 +302,7 @@ public class GridTileProvider implements TileProvider {
             else if (item instanceof WiFi) { // Controlla se l'oggetto è di tipo WiFi
 
                 WiFi wifiItem = (WiFi) item; // Cast esplicito a WiFi
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(wifiItem.getLongitudine(), wifiItem.getLatitudine(), zoom, 0);
 
                 if (myTile.equals(tileFound)) {
                     listMapTouch.add(wifiItem);
@@ -312,7 +311,7 @@ public class GridTileProvider implements TileProvider {
 
             else if (item instanceof Noise) {
                 Noise noiseItem = (Noise) item;
-                TileDataInfo tileFound = GridTileProvider.getSubTileByCoordinate(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
+                TileMap tileFound = GridTileProvider.getSubtile(noiseItem.getLongitudine(), noiseItem.getLatitudine(), zoom, 0);
                 if (myTile.equals(tileFound)) {
                     listMapTouch.add(noiseItem);
                 }
@@ -322,23 +321,23 @@ public class GridTileProvider implements TileProvider {
         return listMapTouch;
     }
 
-    public static TileDataInfo getSubTileByCoordinate(double pointX, double pointY, int zoomLevel, long date) {
-        double tileDim = MAP_SIZE / Math.pow(2d, zoomLevel);
+    public static TileMap getSubtile(double pointX, double pointY, int zoomLevel, long date) {
+        double tileDim = MapSize / Math.pow(2d, zoomLevel);
         tileDim = tileDim / gridSize;
-        int tileX = (int) ((pointX - TILES_ORIGIN[0]) / tileDim);
-        int tileY = (int) ((TILES_ORIGIN[1] - pointY) / tileDim);
-        return new TileDataInfo(tileX, tileY, zoomLevel, date);
+        int tileX = (int) ((pointX - MapCoordinates[0]) / tileDim);
+        int tileY = (int) ((MapCoordinates[1] - pointY) / tileDim);
+        return new TileMap(tileX, tileY, zoomLevel, date);
     }
 
-    public static double inMetersLatCoordinate(double latitude) {
+    public static double latitudineInMeters(double latitude) {
         if (latitude < 0) {
-            return -inMetersLatCoordinate(-latitude);
+            return -latitudineInMeters(-latitude);
         }
-        return (Math.log(Math.tan((90d + latitude) * Math.PI / 360d)) / (Math.PI / 180d)) * ORIGIN_SHIFT / 180d;
+        return (Math.log(Math.tan((90d + latitude) * Math.PI / 360d)) / (Math.PI / 180d)) * OriginShift / 180d;
     }
 
-    public static double inMetersLngCoordinate(double longitude) {
-        return longitude * ORIGIN_SHIFT / 180.0;
+    public static double longitudineInMeters(double longitude) {
+        return longitude * OriginShift / 180.0;
     }
 
 }

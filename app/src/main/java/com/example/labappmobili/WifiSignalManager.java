@@ -1,7 +1,7 @@
 package com.example.labappmobili;
 
-import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
-import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+import static com.example.labappmobili.GridTileProvider.latitudineInMeters;
+import static com.example.labappmobili.GridTileProvider.longitudineInMeters;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -12,8 +12,6 @@ import android.util.Log;
 
 import androidx.room.Room;
 
-import com.example.labappmobili.RoomDB.LTE.LTE;
-import com.example.labappmobili.RoomDB.LTE.LTEDao;
 import com.example.labappmobili.RoomDB.WiFi.WiFi;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDB;
 import com.example.labappmobili.RoomDB.WiFi.WiFiDao;
@@ -104,8 +102,8 @@ public class WifiSignalManager {
 
         int signalStrength = getWifiLevel();
 
-        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        double latitudine = latitudineInMeters(currentLocation.getLatitude());
+        double longitudine = longitudineInMeters(currentLocation.getLongitude());
 
 
         GridTileProvider gridTileProvider = new GridTileProvider(context, getAllWifiValue());

@@ -1,7 +1,7 @@
 package com.example.labappmobili;
 
-import static com.example.labappmobili.GridTileProvider.inMetersLatCoordinate;
-import static com.example.labappmobili.GridTileProvider.inMetersLngCoordinate;
+import static com.example.labappmobili.GridTileProvider.latitudineInMeters;
+import static com.example.labappmobili.GridTileProvider.longitudineInMeters;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -109,8 +109,8 @@ public class LteSignalManager {
 
         int lteLevel = getLTELevel();
 
-        double latitudine = inMetersLatCoordinate(currentLocation.getLatitude());
-        double longitudine = inMetersLngCoordinate(currentLocation.getLongitude());
+        double latitudine = latitudineInMeters(currentLocation.getLatitude());
+        double longitudine = longitudineInMeters(currentLocation.getLongitude());
 
         GridTileProvider gridTileProvider = new GridTileProvider(context, getAllLteValue());
 
